@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// TODO: make a better logging plz >:(
 func NewLogger(msg string) {
 	file, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

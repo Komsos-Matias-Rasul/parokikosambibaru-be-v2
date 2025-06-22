@@ -10,12 +10,13 @@ import (
 
 func GetDB() *sql.DB {
 	conf := mysql.Config{
-		User:         conf.MYSQL_USER,
-		Passwd:       conf.MYSQL_PASSWORD,
-		Addr:         conf.MYSQL_HOST,
-		DBName:       conf.MYSQL_DATABASE,
-		ReadTimeout:  time.Second * 15,
-		WriteTimeout: time.Second * 15,
+		User:                 conf.MYSQL_USER,
+		Passwd:               conf.MYSQL_PASSWORD,
+		Addr:                 conf.MYSQL_HOST,
+		DBName:               conf.MYSQL_DATABASE,
+		ReadTimeout:          time.Second * 15,
+		WriteTimeout:         time.Second * 15,
+		AllowNativePasswords: true,
 	}
 	conn, err := mysql.NewConnector(&conf)
 	if err != nil {
