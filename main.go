@@ -2,19 +2,22 @@ package main
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/conf"
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controller"
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
 	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	router.Run(fmt.Sprintf(":%s", os.Getenv("PORT")))
+	db := lib.GetDB()
+	defer db.Close()
+
+	c := controller.NewController(db)
+
+	router.GET("/ping", c.Ping)
+	router.GET("/api/editions", c.GetAllEditions)
+
+	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
 }
