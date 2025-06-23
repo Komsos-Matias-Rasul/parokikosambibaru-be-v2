@@ -18,6 +18,8 @@ func main() {
 
 	router.GET("/ping", c.Ping)
 	router.GET("/api/editions", c.GetAllEditions)
+	router.GET("/api/editions/:id", c.GetEditionById)
+	router.GET("/api/articles", c.GetArticlesByCategory)
 
 	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
 }
