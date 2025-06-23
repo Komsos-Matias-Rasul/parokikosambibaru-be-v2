@@ -119,6 +119,7 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 		&article.ContentJSON,
 		&article.AdsJSON,
 	)
+
 	article.PublisedDate = lib.Base64ToTime(publishedDate)
 
 	if err == sql.ErrNoRows {
@@ -131,4 +132,63 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"data": article})
+}
+
+func (c *Controller) GetTopArticles(ctx *gin.Context) {
+	editionId := ctx.Query("editionId")
+	if editionId == "" {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "missing required query (?editionId=)"})
+		return
+	}
+	parsedEditionId, err := strconv.Atoi(editionId)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid edition id"})
+		return
+	}
+
+	rows, err := c.db.Query(`
+		SELECT a.id, a.title, slug, w.writer_name, published_date, thumb_img, a.thumb_text, a.edition_id, e.edition_year
+		FROM articles as a
+		JOIN writers w ON w.id = a.writer_id
+		JOIN editions e ON e.id = a.edition_id
+		WHERE is_top_content = true AND published_date IS NOT NULL AND a.edition_id = ?`, parsedEditionId)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type articleResponseModel struct {
+		Id           int        `json:"id"`
+		Title        string     `json:"title"`
+		Slug         string     `json:"slug"`
+		Writer       string     `json:"writer_name"`
+		PublisedDate *time.Time `json:"published_date"`
+		ThumbImg     string     `json:"thumb_img"`
+		ThumbText    string     `json:"thumb_text"`
+		EditionId    int        `json:"edition_id"`
+		EditionYear  int        `json:"edition_year"`
+	}
+
+	articles := []*articleResponseModel{}
+
+	for rows.Next() {
+		var result articleResponseModel
+		var publishedDate []uint8
+		rows.Scan(
+			&result.Id,
+			&result.Title,
+			&result.Slug,
+			&result.Writer,
+			&publishedDate,
+			&result.ThumbImg,
+			&result.ThumbText,
+			&result.EditionId,
+			&result.EditionYear,
+		)
+		result.PublisedDate = lib.Base64ToTime(publishedDate)
+		articles = append(articles, &result)
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"data": articles})
 }

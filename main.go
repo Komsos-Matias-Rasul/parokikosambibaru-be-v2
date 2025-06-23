@@ -21,6 +21,7 @@ func main() {
 	router.GET("/api/editions/:id", c.GetEditionById)
 	router.GET("/api/articles", c.GetArticlesByCategory)
 	router.GET("/api/articles/:year/:editionId/:slug", c.GetArticleBySlug)
+	router.GET("/api/articles/top", c.GetTopArticles)
 
 	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
 }
