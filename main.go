@@ -44,8 +44,7 @@ func main() {
 	router.GET("/api/img/zaitun/articles/:year/:articleId/:fileName", c.GetArticleCoverImg)
 	router.GET("/api/ads/:year/:fileName", c.GetAdImage)
 
-	// misc routes
-	router.GET("/api/zaitun/current", c.GetActiveEdition)
+	router.GET("/api/zaitun/current", c.GetActiveEdition) // deprecated
 
 	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
 }

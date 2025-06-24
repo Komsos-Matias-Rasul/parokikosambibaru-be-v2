@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"strconv"
@@ -59,31 +58,54 @@ func (c *Controller) GetEditionById(ctx *gin.Context) {
 		return
 	}
 
-	var edition EditionResponseModel
-	var publishedAt []uint8
-	err = c.db.QueryRow(`
-		SELECT id, title, published_at, edition_year, cover_img, thumbnail_img
-		FROM editions WHERE id = ?`, _id).Scan(
+	type categoryResponseModel struct {
+		Id    int    `json:"id"`
+		Label string `json:"label"`
+		Order int    `json:"order"`
+	}
+
+	type editionResponseModel struct {
+		Id          int                      `json:"id"`
+		Title       string                   `json:"title"`
+		EditionYear int                      `json:"edition_year"`
+		CoverIng    string                   `json:"cover_img"`
+		Categories  []*categoryResponseModel `json:"categories"`
+	}
+
+	var edition editionResponseModel
+	c.db.QueryRow(`
+		SELECT id, title, edition_year, cover_img
+		FROM editions WHERE id = ?
+	`, _id).Scan(
 		&edition.Id,
 		&edition.Title,
-		&publishedAt,
 		&edition.EditionYear,
-		&edition.CoverImg,
-		&edition.ThumbnailImg,
+		&edition.CoverIng,
 	)
-	if err == sql.ErrNoRows {
-		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "edition not found"})
-		return
-	}
+	rows, err := c.db.Query(`
+      SELECT c.id, c.label, c.order FROM categories c
+      WHERE c.edition_id = ? ORDER BY c.order ASC`, edition.Id)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
+	defer rows.Close()
+
+	for rows.Next() {
+		var category categoryResponseModel
+		rows.Scan(&category.Id, &category.Label, &category.Order)
+		edition.Categories = append(edition.Categories, &category)
+	}
+
+	ctx.JSON(200, gin.H{
 		"data": edition,
 	})
 }
 
+/*
+@ deprecated
+This endpoint is deprecated and will be removed in the future.
+*/
 func (c *Controller) GetActiveEdition(ctx *gin.Context) {
 	type categoryResponseModel struct {
 		Id    int    `json:"id"`
