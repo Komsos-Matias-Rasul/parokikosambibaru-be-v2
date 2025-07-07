@@ -2,9 +2,14 @@ package controller
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
+
+
+	"regexp"
+	"strings"
 
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
@@ -192,3 +197,267 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"data": articles})
 }
+
+func (c *Controller) ArchiveArticle(ctx *gin.Context) {
+	articleID := ctx.Param("id")
+	id, err := strconv.Atoi(articleID)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})
+		return
+	}
+
+	var exists bool
+	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !exists {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "article not found"})
+		return
+	}
+
+	_, err = c.db.Exec(`
+		UPDATE articles
+		SET archived_date = ?, published_date = NULL
+		WHERE id = ?`,
+		time.Now().UTC(), id,
+	)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to archive article"})
+		return
+	}
+
+	ctx.JSON(http.StatusAccepted, gin.H{"message": "article archived successfully"})
+}
+
+func (c *Controller) DeleteArticlePermanent(ctx *gin.Context) {
+	articleID := ctx.Param("id")
+	id, err := strconv.Atoi(articleID)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})
+		return
+	}
+	var exists bool
+	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !exists {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "article not found"})
+		return
+	}
+
+	_, err = c.db.Exec(`
+		DELETE FROM articles
+		WHERE id = ?`,
+		id,
+	)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusAccepted, gin.H{"message": "article deleted successfully"})
+
+}
+
+func (c *Controller) PublishArticle(ctx *gin.Context) {
+	articleID := ctx.Param("id")
+	id, err := strconv.Atoi(articleID)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})
+		return
+	}
+	var exists bool
+	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !exists {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "article not found"})
+		return
+	}
+	now := time.Now().UTC()
+	_, err = c.db.Exec(`
+		UPDATE articles
+		SET published_date = ?, archived_date = null
+		WHERE id = ?
+		`, now, id,
+	)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusCreated, gin.H{"message": "article published successfully"})
+}
+
+func (c *Controller) CreateArticle(ctx *gin.Context) {
+	editionIdParam := ctx.Param("editionId")
+	editionId, err := strconv.Atoi(editionIdParam)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid edition id"})
+		return
+	}
+
+	const UNCATEGORIZED = 1
+	const UNKNOWN_WRITER = 1
+	now := time.Now().UTC()
+	res, err := c.db.Exec(`
+		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, editionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now)
+
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to create article",
+			"details": err.Error(),})
+		return
+	}
+
+	articleId64, err := res.LastInsertId()
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to fetch inserted id",
+			"details": err.Error(), } )
+		return
+	}
+
+	articleId := int(articleId64)
+	ctx.JSON(http.StatusCreated, gin.H{"message": "article created successfully", "article_id": articleId})
+}
+
+func (c *Controller) SaveDraft(ctx *gin.Context) {
+	type SaveDraftPayload struct {
+		ArticleData struct {
+			Content json.RawMessage `json:"content"`
+		} `json:"articleData"`
+		IDData string `json:"IDData"`
+	}
+	var payload SaveDraftPayload
+	if err := ctx.BindJSON(&payload); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	id, err := strconv.Atoi(payload.IDData)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article ID"})
+		return
+	}
+
+	now := time.Now().UTC()
+
+	_, err = c.db.Exec(`
+        UPDATE articles
+        SET content_json = ?, updated_at = ?
+        WHERE id = ?
+    `, string(payload.ArticleData.Content), now, id)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to save draft", "details": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"id": payload.IDData})
+}
+
+
+func formatTitleToSlug(title string) string {
+	slug := strings.ToLower(title)
+	reg := regexp.MustCompile(`[^a-z0-9\s]+`)
+	slug = reg.ReplaceAllString(slug, "")
+	slug = strings.TrimSpace(slug)
+	slug = strings.ReplaceAll(slug, " ", "-")
+
+	return slug
+}
+
+
+func (c *Controller) SaveTWC(ctx *gin.Context) {
+	type RequestPayload struct {
+		TitleData    string `json:"titleData"`
+		CategoryData int    `json:"categoryData"`
+		WriterData   int    `json:"writerData"`
+		IDData       int    `json:"IDData"`
+	}
+
+	var req RequestPayload
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	slug := formatTitleToSlug(req.TitleData)
+	now := time.Now().UTC()
+
+	_, err := c.db.Exec(`
+		UPDATE articles
+		SET updated_at = ?, title = ?, slug = ?, category_id = ?, writer_id = ?
+		WHERE id = ?`,
+		now,
+		req.TitleData,
+		slug,
+		req.CategoryData,
+		req.WriterData,
+		req.IDData,
+	)
+
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to update article",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"id": req.IDData})
+}
+
+func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
+	editionIdParam := ctx.Query("edition")
+	editionId, err := strconv.Atoi(editionIdParam)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid edition id"})
+		return
+	}
+
+	rows, err := c.db.Query(`
+		SELECT DISTINCT c.id, c.label
+		FROM categories c
+		JOIN articles a ON a.category_id = c.id
+		WHERE a.edition_id = ?
+		ORDER BY c.label ASC
+	`, editionId)
+
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	type Category struct {
+		ID    int    `json:"id"`
+		Label string `json:"label"`
+	}
+
+	var categories []Category
+	for rows.Next() {
+		var cat Category
+		if err := rows.Scan(&cat.ID, &cat.Label); err != nil {
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		categories = append(categories, cat)
+	}
+
+
+	
+	ctx.JSON(http.StatusOK, gin.H{"data": categories})
+}
+
+
+
