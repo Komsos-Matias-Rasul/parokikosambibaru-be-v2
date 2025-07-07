@@ -40,6 +40,16 @@ func main() {
 	router.GET("/api/articles/:year/:editionId/:slug", c.GetArticleBySlug)
 	router.GET("/api/articles/top", c.GetTopArticles)
 
+	// admin
+	router.PUT("/api/core/articles/archive/:id", c.ArchiveArticle)  
+	router.DELETE("/api/core/articles/delete/:id", c.DeleteArticlePermanent)  
+	router.POST("/api/core/articles/publish/:id", c.PublishArticle)  
+	router.POST("/api/core/articles/:editionId/create", c.CreateArticle)  
+	router.POST("/api/core/articles/saveDraft", c.SaveDraft)  
+	router.POST("/api/core/articles/saveTWC", c.SaveTWC) 
+	router.GET("/api/core/categories", c.GetCategoriesByEdition)  
+
+
 	router.GET("/api/img/zaitun/editions/:year/:editionId/:fileName", c.GetZaitunCoverImg)
 	router.GET("/api/img/zaitun/articles/:year/:articleId/:fileName", c.GetArticleCoverImg)
 	router.GET("/api/ads/:year/:fileName", c.GetAdImage)

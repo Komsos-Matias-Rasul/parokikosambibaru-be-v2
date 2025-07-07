@@ -17,6 +17,8 @@ func GetDB() *sql.DB {
 		ReadTimeout:          time.Second * 15,
 		WriteTimeout:         time.Second * 15,
 		AllowNativePasswords: true,
+		ParseTime:            true,
+		Loc:                  time.UTC,
 	}
 	conn, err := mysql.NewConnector(&conf)
 	if err != nil {
