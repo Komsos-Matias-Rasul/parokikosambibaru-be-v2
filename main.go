@@ -56,5 +56,9 @@ func main() {
 
 	router.GET("/api/zaitun/current", c.GetActiveEdition) // deprecated
 
+	/*Core API (admin)*/
+	router.GET("/api/core/writers", c.CoreGetAllWriters)
+	router.GET("/api/core/articles/:id", c.CoreGetArticleById)
+
 	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
 }

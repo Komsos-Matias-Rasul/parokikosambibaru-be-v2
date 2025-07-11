@@ -1,12 +1,12 @@
 package controller
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
-
 
 	"regexp"
 	"strings"
@@ -26,12 +26,20 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid category id"})
 		return
 	}
-	rows, err := c.db.Query(`
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	rows, err := c.db.QueryContext(_context, `
 		SELECT a.id, a.title, slug, w.writer_name, published_date, thumb_img, a.thumb_text, a.edition_id, e.edition_year
 		FROM articles as a
 		JOIN writers w ON w.id = a.writer_id
 		JOIN editions e ON e.id = a.edition_id
 		WHERE category_id = ? AND published_date IS NOT NULL`, _catId)
+	if _context.Err() == context.DeadlineExceeded {
+		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"error": "request timed out"})
+		return
+	}
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -313,7 +321,7 @@ func (c *Controller) CreateArticle(ctx *gin.Context) {
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed to create article",
-			"details": err.Error(),})
+			"details": err.Error()})
 		return
 	}
 
@@ -321,7 +329,7 @@ func (c *Controller) CreateArticle(ctx *gin.Context) {
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed to fetch inserted id",
-			"details": err.Error(), } )
+			"details": err.Error()})
 		return
 	}
 
@@ -362,7 +370,6 @@ func (c *Controller) SaveDraft(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"id": payload.IDData})
 }
 
-
 func formatTitleToSlug(title string) string {
 	slug := strings.ToLower(title)
 	reg := regexp.MustCompile(`[^a-z0-9\s]+`)
@@ -372,7 +379,6 @@ func formatTitleToSlug(title string) string {
 
 	return slug
 }
-
 
 func (c *Controller) SaveTWC(ctx *gin.Context) {
 	type RequestPayload struct {
@@ -454,10 +460,5 @@ func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
 		categories = append(categories, cat)
 	}
 
-
-	
 	ctx.JSON(http.StatusOK, gin.H{"data": categories})
 }
-
-
-
