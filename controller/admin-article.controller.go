@@ -142,3 +142,51 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"data": responseData})
 }
+
+func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
+
+	type article struct {
+		Id                 *string    `json:"id"`
+		Title              *string    `json:"title"`
+		Writer             *string    `json:"writer"`
+		Category           *string    `json:"category"`
+		ArticleUpdatedDate *time.Time `json:"updated_at"`
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	articles := []*article{}
+	rows, err := c.db.QueryContext(_context,
+		`SELECT articles.id, title, w.writer_name, c.label as category, updated_at FROM articles
+      JOIN categories c ON c.id=articles.category_id
+      JOIN writers w ON w.id=articles.writer_id
+      WHERE published_date is null`)
+	if _context.Err() == context.DeadlineExceeded {
+		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"error": "request timed out"})
+		return
+	}
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var article article
+		var articleUpdatedDate []uint8
+		if err := rows.Scan(
+			&article.Id,
+			&article.Title,
+			&article.Writer,
+			&article.Category,
+			&articleUpdatedDate,
+		); err != nil {
+			log.Println(err.Error())
+		}
+		article.ArticleUpdatedDate = lib.Base64ToTime(articleUpdatedDate)
+		articles = append(articles, &article)
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"data": articles})
+}
