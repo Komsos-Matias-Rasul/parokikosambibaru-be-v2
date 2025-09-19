@@ -207,7 +207,7 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 }
 
 func (c *Controller) ArchiveArticle(ctx *gin.Context) {
-	articleID := ctx.Param("id")
+	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})
@@ -240,7 +240,7 @@ func (c *Controller) ArchiveArticle(ctx *gin.Context) {
 }
 
 func (c *Controller) DeleteArticlePermanent(ctx *gin.Context) {
-	articleID := ctx.Param("id")
+	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})
@@ -272,7 +272,7 @@ func (c *Controller) DeleteArticlePermanent(ctx *gin.Context) {
 }
 
 func (c *Controller) PublishArticle(ctx *gin.Context) {
-	articleID := ctx.Param("id")
+	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})

@@ -43,14 +43,16 @@ func main() {
 	// admin
 	router.GET("/api/core/editions", c.CoreGetAllEditions)
 	router.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
+	router.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
+	router.POST("/api/core/edition")
 
-	router.PUT("/api/core/articles/:id/archive", c.ArchiveArticle)
-	router.DELETE("/api/core/articles/:id", c.DeleteArticlePermanent)
-	router.POST("/api/core/articles/:id/publish", c.PublishArticle)
-	router.POST("/api/core/articles/:editionId/create", c.CreateArticle)
+	router.PUT("/api/core/articles/:articleId/archive", c.ArchiveArticle)
+	router.DELETE("/api/core/articles/:articleId", c.DeleteArticlePermanent)
+	router.POST("/api/core/articles/publish/:articleId", c.PublishArticle)
+	router.POST("/api/core/articles/create/:editionId", c.CreateArticle)
 	router.POST("/api/core/articles/saveDraft", c.SaveDraft)
 	router.POST("/api/core/articles/saveTWC", c.SaveTWC)
-	router.GET("/api/core/articles/:id", c.CoreGetArticleById)
+	router.GET("/api/core/articles/:articleId", c.CoreGetArticleById)
 
 	router.GET("/api/core/drafts", c.CoreGetDrafts)
 

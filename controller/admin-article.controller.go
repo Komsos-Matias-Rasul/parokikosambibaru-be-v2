@@ -13,7 +13,7 @@ import (
 )
 
 func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
-	articleId := ctx.Param("id")
+	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid article id"})

@@ -1,8 +1,11 @@
 package controller
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
@@ -46,7 +49,68 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 		ActiveEdition: activeEdition,
 	}
 
+	time.Sleep(5 * time.Second)
+
 	ctx.JSON(200, gin.H{
 		"data": responseData,
+	})
+}
+
+func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
+	type RequestPayload struct {
+		Title string `json:"title"`
+		Year  int    `json:"year"`
+	}
+	editionId := ctx.Param("editionId")
+	parsedEditionId, err := strconv.Atoi(editionId)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid edition id"})
+		return
+	}
+
+	var req RequestPayload
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	type ResponsePayload struct {
+		Title     *string `json:"title"`
+		Year      *int    `json:"year"`
+		EditionId *int    `json:"id"`
+	}
+
+	var edition ResponsePayload
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	_, err = c.db.QueryContext(_context,
+		`
+		UPDATE editions
+		SET title = ?,
+		edition_year = ?
+		WHERE id = ?
+		`, req.Title, req.Year, parsedEditionId)
+
+	c.db.QueryRowContext(_context,
+		"SELECT id, title, edition_year FROM editions WHERE id = ?",
+		parsedEditionId).Scan(&edition.EditionId, &edition.Title, &edition.Year)
+
+	if _context.Err() == context.DeadlineExceeded {
+		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"error": "request timed out"})
+		return
+	}
+	if err != nil {
+		log.Println(err)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": edition,
 	})
 }
