@@ -11,12 +11,14 @@ import (
 )
 
 type Controller struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *lib.Logger
 }
 
-func NewController(db *sql.DB) *Controller {
+func NewController(db *sql.DB, logger *lib.Logger) *Controller {
 	return &Controller{
 		db,
+		logger,
 	}
 }
 
@@ -25,12 +27,17 @@ func (c *Controller) Ping(ctx *gin.Context) {
 	defer cancel()
 	err := c.db.PingContext(context)
 	if err != nil {
-		lib.NewLogger(err.Error())
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		res := gin.H{
+			"error": lib.ErrDatabase.Error(),
+		}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
+		c.logger.Error(ctx.Copy(), lib.ErrDatabase, nil, res)
 		return
 	}
-	lib.NewLogger("succeed")
-	ctx.JSON(200, gin.H{
+
+	res := gin.H{
 		"data": "pong",
-	})
+	}
+	ctx.JSON(200, res)
+	c.logger.Info(ctx.Copy(), nil, res)
 }

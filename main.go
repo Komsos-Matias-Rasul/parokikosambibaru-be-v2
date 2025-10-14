@@ -24,49 +24,70 @@ func corsMiddleware() gin.HandlerFunc {
 }
 
 func main() {
-	router := gin.Default()
-	router.Use(corsMiddleware())
+
+	logger := lib.NewLogger()
+
+	gin.SetMode(gin.DebugMode)
+	app := gin.Default()
+	app.Use(corsMiddleware())
 	db := lib.GetDB()
 	defer db.Close()
 
-	c := controller.NewController(db)
+	c := controller.NewController(db, logger)
 
-	router.GET("/ping", c.Ping)
+	app.GET("/ping", c.Ping)
 
-	router.GET("/api/editions", c.GetAllEditions)
-	router.GET("/api/editions/:id", c.GetEditionById)
+	/*
+		*
+		*
+			ZAITUN CLIENT API ROUTES
+			---
+	*/
+	app.GET("/api/editions", c.GetAllEditions)
+	app.GET("/api/editions/:editionId", c.GetEditionById)
 
-	router.GET("/api/articles", c.GetArticlesByCategory)
-	router.GET("/api/articles/:year/:editionId/:slug", c.GetArticleBySlug)
-	router.GET("/api/articles/top", c.GetTopArticles)
+	app.GET("/api/articles", c.GetArticlesByCategory)
+	app.GET("/api/articles/:year/:editionId/:slug", c.GetArticleBySlug)
+	app.GET("/api/articles/top", c.GetTopArticles)
 
-	// admin
-	router.GET("/api/core/editions", c.CoreGetAllEditions)
-	router.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
-	router.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
-	router.POST("/api/core/edition")
+	/*
+		*
+		*
+			ZAITUN ADMIN API ROUTES
+			---
+	*/
+	app.GET("/api/core/editions", c.CoreGetAllEditions)
+	app.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
+	app.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
+	app.POST("/api/core/edition")
 
-	router.PUT("/api/core/articles/:articleId/archive", c.ArchiveArticle)
-	router.DELETE("/api/core/articles/:articleId", c.DeleteArticlePermanent)
-	router.POST("/api/core/articles/publish/:articleId", c.PublishArticle)
-	router.POST("/api/core/articles/create/:editionId", c.CreateArticle)
-	router.POST("/api/core/articles/saveDraft", c.SaveDraft)
-	router.POST("/api/core/articles/saveTWC", c.SaveTWC)
-	router.GET("/api/core/articles/:articleId", c.CoreGetArticleById)
+	app.PUT("/api/core/articles/:articleId/archive", c.CoreArchiveArticle)
+	app.DELETE("/api/core/articles/:articleId", c.CoreDeleteArticlePermanent)
+	app.POST("/api/core/articles/publish/:articleId", c.CorePublishArticle)
+	app.POST("/api/core/articles/create/:editionId", c.CoreCreateArticle)
+	app.POST("/api/core/articles/saveDraft", c.CoreSaveDraft)
+	app.POST("/api/core/articles/saveTWC", c.CoreSaveTWC)
+	app.GET("/api/core/articles/:articleId", c.CoreGetArticleById)
 
-	router.GET("/api/core/drafts", c.CoreGetDrafts)
+	app.GET("/api/core/drafts", c.CoreGetDrafts)
 
-	router.GET("/api/core/categories", c.GetCategoriesByEdition)
-	router.GET("/api/core/categories/by-article", c.GetCategoriesByArticle)
+	app.GET("/api/core/categories", c.GetCategoriesByEdition)
+	app.GET("/api/core/categories/by-article", c.GetCategoriesByArticle)
 
-	router.GET("/api/img/zaitun/editions/:year/:editionId/:fileName", c.GetZaitunCoverImg)
-	router.GET("/api/img/zaitun/articles/:year/:articleId/:fileName", c.GetArticleCoverImg)
-	router.GET("/api/ads/:year/:fileName", c.GetAdImage)
-	router.POST("/api/img/save", c.CoreSaveImage)
+	app.GET("/api/core/writers", c.CoreGetAllWriters)
 
-	router.GET("/api/core/writers", c.CoreGetAllWriters)
+	/*
+		*
+		*
+			IMAGE API ROUTES
+			---
+	*/
+	app.GET("/api/img/zaitun/editions/:year/:editionId/:fileName", c.GetZaitunCoverImg)
+	app.GET("/api/img/zaitun/articles/:year/:articleId/:fileName", c.GetArticleCoverImg)
+	app.GET("/api/ads/:year/:fileName", c.GetAdImage)
+	app.POST("/api/core/cover/edition/save", c.CoreSaveEditionCover)
+	app.POST("/api/core/cover/article/save", c.CoreSaveArticleCover)
+	app.POST("/api/core/content/article/save", c.CoreSaveArticleContent)
 
-	router.GET("/api/zaitun/current", c.GetActiveEdition) // deprecated
-
-	router.Run(fmt.Sprintf("127.0.0.1:%d", conf.SERVER_PORT))
+	app.Run(fmt.Sprintf("0.0.0.0:%d", conf.SERVER_PORT))
 }

@@ -21,9 +21,13 @@ type EditionResponseModel struct {
 
 func (c *Controller) GetAllEditions(ctx *gin.Context) {
 	editions := []*EditionResponseModel{}
-	rows, err := c.db.Query(`SELECT id, title, published_at, edition_year, cover_img, thumbnail_img FROM editions`)
+	rows, err := c.db.Query(`
+		SELECT id, title, published_at, edition_year, cover_img, thumbnail_img
+		FROM editions WHERE published_at IS NOT NULL`)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		res := gin.H{"error": lib.ErrDatabase.Error()}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
+		c.logger.Error(ctx.Copy(), err, nil, res)
 		return
 	}
 	defer rows.Close()
@@ -48,13 +52,16 @@ func (c *Controller) GetAllEditions(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{
 		"data": editions,
 	})
+	c.logger.Info(ctx.Copy(), nil, editions)
 }
 
 func (c *Controller) GetEditionById(ctx *gin.Context) {
-	editionId := ctx.Param("id")
+	editionId := ctx.Param("editionId")
 	_id, err := strconv.Atoi(editionId)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		res := gin.H{"error": lib.ErrInvalidEdition.Error()}
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
+		c.logger.Error(ctx.Copy(), err, nil, res)
 		return
 	}
 
@@ -73,7 +80,7 @@ func (c *Controller) GetEditionById(ctx *gin.Context) {
 	}
 
 	var edition editionResponseModel
-	c.db.QueryRow(`
+	err = c.db.QueryRow(`
 		SELECT id, title, edition_year, cover_img
 		FROM editions WHERE id = ?
 	`, _id).Scan(
@@ -82,11 +89,20 @@ func (c *Controller) GetEditionById(ctx *gin.Context) {
 		&edition.EditionYear,
 		&edition.CoverIng,
 	)
+	if err != nil {
+		res := gin.H{"err": lib.ErrDatabase.Error()}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
+		c.logger.Error(ctx.Copy(), err, nil, res)
+		return
+	}
+
 	rows, err := c.db.Query(`
       SELECT c.id, c.label, c.order FROM categories c
       WHERE c.edition_id = ? ORDER BY c.order ASC`, edition.Id)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		res := gin.H{"err": lib.ErrDatabase.Error()}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
+		c.logger.Error(ctx.Copy(), err, nil, res)
 		return
 	}
 	defer rows.Close()
@@ -100,55 +116,5 @@ func (c *Controller) GetEditionById(ctx *gin.Context) {
 	ctx.JSON(200, gin.H{
 		"data": edition,
 	})
-}
-
-/*
-@ deprecated
-This endpoint is deprecated and will be removed in the future.
-*/
-func (c *Controller) GetActiveEdition(ctx *gin.Context) {
-	type categoryResponseModel struct {
-		Id    int    `json:"id"`
-		Label string `json:"label"`
-		Order int    `json:"order"`
-	}
-
-	type editionResponseModel struct {
-		Id          int                      `json:"id"`
-		Title       string                   `json:"title"`
-		EditionYear int                      `json:"edition_year"`
-		CoverIng    string                   `json:"cover_img"`
-		Categories  []*categoryResponseModel `json:"categories"`
-	}
-
-	var edition editionResponseModel
-	c.db.QueryRow(`
-		SELECT e.id, title, edition_year, cover_img
-		FROM editions as e
-		JOIN active_edition ae ON e.id = ae.edition_id
-		WHERE e.id = ae.edition_id
-	`).Scan(
-		&edition.Id,
-		&edition.Title,
-		&edition.EditionYear,
-		&edition.CoverIng,
-	)
-	rows, err := c.db.Query(`
-      SELECT c.id, c.label, c.order FROM categories c
-      WHERE c.edition_id = ? ORDER BY c.order ASC`, edition.Id)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var category categoryResponseModel
-		rows.Scan(&category.Id, &category.Label, &category.Order)
-		edition.Categories = append(edition.Categories, &category)
-	}
-
-	ctx.JSON(200, gin.H{
-		"data": edition,
-	})
+	c.logger.Info(ctx.Copy(), nil, edition)
 }
