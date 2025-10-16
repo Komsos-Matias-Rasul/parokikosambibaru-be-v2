@@ -14,7 +14,7 @@ func GetDB() *sql.DB {
 		Passwd:               conf.MYSQL_PASSWORD,
 		Addr:                 conf.MYSQL_HOST,
 		DBName:               conf.MYSQL_DATABASE,
-		ReadTimeout:          time.Second * 15,
+		ReadTimeout:          time.Second * 120,
 		WriteTimeout:         time.Second * 15,
 		AllowNativePasswords: true,
 		ParseTime:            true,
