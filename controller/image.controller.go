@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"io"
-	"net/http"
 
 	"cloud.google.com/go/storage"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
@@ -17,9 +16,7 @@ func (c *Controller) GetZaitunCoverImg(ctx *gin.Context) {
 
 	client, err := lib.GetCloudStorage(ctx.Request.Context())
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 	defer client.CloudStorageClient.Close()
@@ -29,30 +26,23 @@ func (c *Controller) GetZaitunCoverImg(ctx *gin.Context) {
 
 	reader, err := obj.NewReader(ctx.Request.Context())
 	if err == storage.ErrObjectNotExist {
-		res := gin.H{"error": lib.ErrNoObject.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortNoObject(ctx, err, nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 
 	p, err := io.ReadAll(reader)
 	if err != nil {
-		res := gin.H{"error": lib.ErrReadFailure.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortReadFailure(ctx, err, nil)
 		return
 	}
 	defer reader.Close()
 
 	attr, _ := obj.Attrs(ctx.Request.Context())
-	ctx.Data(http.StatusOK, attr.ContentType, []byte(p))
-	c.logger.Info(ctx.Copy(), nil, fileName)
+	c.res.SuccessWithData(ctx, attr.ContentType, []byte(p), fileName)
 }
 
 func (c *Controller) GetArticleCoverImg(ctx *gin.Context) {
@@ -62,9 +52,7 @@ func (c *Controller) GetArticleCoverImg(ctx *gin.Context) {
 
 	client, err := lib.GetCloudStorage(ctx.Request.Context())
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 	defer client.CloudStorageClient.Close()
@@ -73,30 +61,23 @@ func (c *Controller) GetArticleCoverImg(ctx *gin.Context) {
 	obj := client.StorageBucket.Object(_fileName)
 	reader, err := obj.NewReader(ctx.Request.Context())
 	if err == storage.ErrObjectNotExist {
-		res := gin.H{"error": lib.ErrNoObject.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortNoObject(ctx, err, nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 
 	p, err := io.ReadAll(reader)
 	if err != nil {
-		res := gin.H{"error": lib.ErrReadFailure.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortReadFailure(ctx, err, nil)
 		return
 	}
 	defer reader.Close()
 
 	attr, _ := obj.Attrs(ctx.Request.Context())
-	ctx.Data(http.StatusOK, attr.ContentType, []byte(p))
-	c.logger.Info(ctx.Copy(), nil, fileName)
+	c.res.SuccessWithData(ctx, attr.ContentType, []byte(p), fileName)
 }
 
 func (c *Controller) GetAdImage(ctx *gin.Context) {
@@ -105,9 +86,7 @@ func (c *Controller) GetAdImage(ctx *gin.Context) {
 
 	client, err := lib.GetCloudStorage(ctx.Request.Context())
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 	defer client.CloudStorageClient.Close()
@@ -116,28 +95,21 @@ func (c *Controller) GetAdImage(ctx *gin.Context) {
 	obj := client.StorageBucket.Object(_fileName)
 	reader, err := obj.NewReader(ctx.Request.Context())
 	if err == storage.ErrObjectNotExist {
-		res := gin.H{"error": lib.ErrNoObject.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortNoObject(ctx, err, nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrStorage.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortStorageError(ctx, err, nil)
 		return
 	}
 
 	p, err := io.ReadAll(reader)
 	if err != nil {
-		res := gin.H{"error": lib.ErrReadFailure.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortReadFailure(ctx, err, nil)
 		return
 	}
 	defer reader.Close()
 
 	attr, _ := obj.Attrs(ctx.Request.Context())
-	ctx.Data(http.StatusOK, attr.ContentType, []byte(p))
-	c.logger.Info(ctx.Copy(), nil, fileName)
+	c.res.SuccessWithData(ctx, attr.ContentType, []byte(p), fileName)
 }

@@ -39,7 +39,7 @@ func (l *Logger) Debug(msg string, args slog.Attr) {
 	logger.Debug(msg, args)
 }
 
-func (l *Logger) Info(ctx *gin.Context, reqBody any, resBody any) {
+func (l *Logger) Info(ctx *gin.Context, reqId string, reqBody any, resBody any) {
 	logfile := fmt.Sprintf("logs/%s_core_samara.log", time.Now().Format("2006-01-02"))
 	file, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -54,9 +54,11 @@ func (l *Logger) Info(ctx *gin.Context, reqBody any, resBody any) {
 
 	logger.Info(
 		http.StatusText(ctx.Writer.Status()),
-		"code", ctx.Writer.Status(),
+		"status", ctx.Writer.Status(),
 		"address", ctx.ClientIP(),
-		"source", ctx.Request.URL.String(), "request", reqBytes)
+		"source", ctx.Request.URL.String(),
+		"ID", reqId,
+		"request", reqBytes)
 	logger.Debug("data_log", "response", resBytes)
 }
 
@@ -64,7 +66,7 @@ func (l *Logger) Warning(status int, statusText string, source string, data stri
 
 }
 
-func (l *Logger) Error(ctx *gin.Context, errors any, reqBody any, resBody any) {
+func (l *Logger) Error(ctx *gin.Context, errors error, reqId string, reqBody any, resBody any) {
 	logfile := fmt.Sprintf("logs/%s_core_samara.log", time.Now().Format("2006-01-02"))
 	file, err := os.OpenFile(logfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -78,10 +80,11 @@ func (l *Logger) Error(ctx *gin.Context, errors any, reqBody any, resBody any) {
 	resBytes, _ := json.Marshal(resBody)
 	logger.Info(
 		http.StatusText(ctx.Writer.Status()),
-		"code", ctx.Writer.Status(),
+		"status", ctx.Writer.Status(),
 		"address", ctx.ClientIP(),
 		"source", ctx.Request.URL.String(),
 		"error", errors,
+		"ID", reqId,
 		"request", reqBytes)
 	logger.Debug("data_log", "response", resBytes)
 }

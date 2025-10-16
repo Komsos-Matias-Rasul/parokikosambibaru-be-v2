@@ -25,15 +25,13 @@ func corsMiddleware() gin.HandlerFunc {
 
 func main() {
 
-	logger := lib.NewLogger()
-
 	gin.SetMode(gin.DebugMode)
 	app := gin.Default()
 	app.Use(corsMiddleware())
 	db := lib.GetDB()
 	defer db.Close()
 
-	c := controller.NewController(db, logger)
+	c := controller.NewController(db)
 
 	app.GET("/ping", c.Ping)
 

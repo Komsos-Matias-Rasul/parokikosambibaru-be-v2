@@ -19,9 +19,7 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidArticle.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -46,35 +44,26 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 		&row.CategoryId,
 	)
 	if _context.Err() == context.DeadlineExceeded {
-		res := gin.H{"error": lib.ErrTimeout.Error()}
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, res)
-		c.logger.Error(ctx.Copy(), _context.Err(), nil, res)
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
 	}
 	if err == sql.ErrNoRows {
-		res := gin.H{"error": lib.ErrArticleNotFound.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": row})
-	c.logger.Info(ctx.Copy(), nil, row)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, row)
 }
 
 func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidEdition.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -112,15 +101,11 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
       JOIN writers w ON	w.id = a.writer_id
       WHERE a.edition_id = ?`, parsedEditionId)
 	if _context.Err() == context.DeadlineExceeded {
-		res := gin.H{"error": lib.ErrTimeout.Error()}
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, res)
-		c.logger.Error(ctx.Copy(), _context.Err(), nil, res)
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -159,8 +144,7 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 	}
 	responseData.EditionPublishedDate = lib.Base64ToTime(editionPublishedDate)
 
-	ctx.JSON(http.StatusOK, gin.H{"data": responseData})
-	c.logger.Info(ctx.Copy(), nil, responseData)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, responseData)
 }
 
 func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
@@ -182,15 +166,11 @@ func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
       JOIN writers w ON w.id=articles.writer_id
       WHERE published_date is null`)
 	if _context.Err() == context.DeadlineExceeded {
-		res := gin.H{"error": lib.ErrTimeout.Error()}
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, res)
-		c.logger.Error(ctx.Copy(), _context.Err(), nil, res)
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -211,32 +191,25 @@ func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
 		articles = append(articles, &article)
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": articles})
-	c.logger.Info(ctx.Copy(), nil, articles)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
 }
 
 func (c *Controller) CoreArchiveArticle(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidArticle.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
 		return
 	}
 
 	var exists bool
 	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	if !exists {
-		res := gin.H{"error": lib.ErrArticleNotFound.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), lib.ErrArticleNotFound.Error(), nil, res)
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
 		return
 	}
 
@@ -247,38 +220,29 @@ func (c *Controller) CoreArchiveArticle(ctx *gin.Context) {
 		time.Now().UTC(), id,
 	)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
 	res := gin.H{"message": "article archived successfully"}
-	ctx.JSON(http.StatusAccepted, res)
-	c.logger.Info(ctx.Copy(), nil, res)
+	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
 func (c *Controller) CoreDeleteArticlePermanent(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidArticle.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
 		return
 	}
 	var exists bool
 	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	if !exists {
-		res := gin.H{"error": lib.ErrArticleNotFound.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), lib.ErrArticleNotFound.Error(), nil, res)
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
 		return
 	}
 
@@ -288,39 +252,29 @@ func (c *Controller) CoreDeleteArticlePermanent(ctx *gin.Context) {
 		id,
 	)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
 	res := gin.H{"message": "article deleted successfully"}
-	ctx.JSON(http.StatusOK, res)
-	c.logger.Info(ctx.Copy(), nil, res)
-
+	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
 func (c *Controller) CorePublishArticle(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidArticle.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
 		return
 	}
 	var exists bool
 	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM articles WHERE id = ?)", id).Scan(&exists)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	if !exists {
-		res := gin.H{"error": lib.ErrArticleNotFound.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), lib.ErrArticleNotFound.Error(), nil, res)
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
 		return
 	}
 	now := time.Now().UTC()
@@ -331,24 +285,19 @@ func (c *Controller) CorePublishArticle(ctx *gin.Context) {
 		`, now, id,
 	)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
 	res := gin.H{"message": "article published successfully"}
-	ctx.JSON(http.StatusOK, res)
-	c.logger.Info(ctx.Copy(), nil, res)
+	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
 func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	editionIdParam := ctx.Param("editionId")
 	editionId, err := strconv.Atoi(editionIdParam)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidEdition.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -361,24 +310,19 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	`, editionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now)
 
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
 	articleId64, err := article.LastInsertId()
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
 	articleId := int(articleId64)
 	res := gin.H{"message": "article created successfully", "article_id": articleId}
-	ctx.JSON(http.StatusCreated, res)
-	c.logger.Info(ctx.Copy(), nil, res)
+	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, nil, res)
 }
 
 func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
@@ -390,9 +334,7 @@ func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
 	}
 	var payload SaveDraftPayload
 	if err := ctx.BindJSON(&payload); err != nil {
-		res := gin.H{"error": "invalid request body", "details": err.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -404,15 +346,12 @@ func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
         WHERE id = ?
     `, string(payload.ArticleData.Content), now, payload.IDData)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
-	res := gin.H{"id": payload.IDData}
-	ctx.JSON(http.StatusOK, res)
-	c.logger.Info(ctx.Copy(), payload, res)
+	res := gin.H{"message": "draft saved successfully", "article_id": payload.IDData}
+	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
 }
 
 func formatTitleToSlug(title string) string {
@@ -435,9 +374,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 
 	var payload RequestPayload
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		res := gin.H{"error": "invalid request body", "details": err.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -457,13 +394,10 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, payload, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
-	res := gin.H{"id": payload.IDData}
-	ctx.JSON(http.StatusOK, res)
-	c.logger.Info(ctx.Copy(), payload, res)
+	res := gin.H{"message": "attributes saved successfully", "article_id": payload.IDData}
+	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
 }

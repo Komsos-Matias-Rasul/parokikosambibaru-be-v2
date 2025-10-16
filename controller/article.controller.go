@@ -3,8 +3,6 @@ package controller
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -15,16 +13,12 @@ import (
 func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 	category := ctx.Query("category")
 	if category == "" {
-		res := gin.H{"error": "missing required query (?category=)"}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), errors.New("missing required query (?category=)"), nil, res)
+		c.res.AbortInvalidCategory(ctx, lib.ErrInvalidCategory, "missing required query (?category=)", nil)
 		return
 	}
 	_catId, err := strconv.Atoi(category)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidCategory.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidCategory(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -38,15 +32,11 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 	JOIN editions e ON e.id = a.edition_id
 	WHERE category_id = ? AND published_date IS NOT NULL`, _catId)
 	if _context.Err() == context.DeadlineExceeded {
-		res := gin.H{"error": lib.ErrTimeout.Error()}
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, res)
-		c.logger.Error(ctx.Copy(), _context.Err(), nil, res)
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -83,8 +73,7 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 		articles = append(articles, &result)
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": articles})
-	c.logger.Info(ctx.Copy(), nil, articles)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
 }
 
 func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
@@ -94,16 +83,12 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 
 	parsedYear, err := strconv.Atoi(year)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidYear.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidYear(ctx, err, err.Error(), nil)
 		return
 	}
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidEdition.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -146,35 +131,26 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 	article.PublisedDate = lib.Base64ToTime(publishedDate)
 
 	if err == sql.ErrNoRows {
-		res := gin.H{"error": lib.ErrArticleNotFound.Error()}
-		ctx.AbortWithStatusJSON(http.StatusNotFound, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortArticleNotFound(ctx, err, err.Error(), nil)
 		return
 	}
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": article})
-	c.logger.Info(ctx.Copy(), nil, article)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
 
 func (c *Controller) GetTopArticles(ctx *gin.Context) {
 	editionId := ctx.Query("editionId")
 	if editionId == "" {
-		res := gin.H{"error": "missing required query (?editionId=)"}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), errors.New("missing required query (?editionId=)"), nil, res)
+		c.res.AbortInvalidEdition(ctx, lib.ErrInvalidEdition, "missing required query (?editionId=)", nil)
 		return
 	}
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
-		res := gin.H{"error": lib.ErrInvalidEdition.Error()}
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -185,9 +161,7 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 		JOIN editions e ON e.id = a.edition_id
 		WHERE is_top_content = true AND published_date IS NOT NULL AND a.edition_id = ?`, parsedEditionId)
 	if err != nil {
-		res := gin.H{"error": lib.ErrDatabase.Error()}
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, res)
-		c.logger.Error(ctx.Copy(), err, nil, res)
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -224,6 +198,5 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 		articles = append(articles, &result)
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"data": articles})
-	c.logger.Info(ctx.Copy(), nil, articles)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
 }
