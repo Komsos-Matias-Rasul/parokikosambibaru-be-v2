@@ -3,6 +3,7 @@ package lib
 import "errors"
 
 var ErrArticleNotFound error = errors.New("article not found")
+var ErrEditionNotFound error = errors.New("edition not found")
 var ErrInvalidArticle error = errors.New("invalid article id")
 var ErrInvalidCategory error = errors.New("invalid category id")
 var ErrInvalidEdition error = errors.New("invalid edition id")

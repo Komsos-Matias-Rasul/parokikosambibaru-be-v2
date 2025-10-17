@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"database/sql"
 	"strconv"
 	"time"
 
@@ -65,7 +66,6 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 	}
 
 	var req RequestPayload
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
@@ -76,7 +76,6 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 		Year      *int    `json:"year"`
 		EditionId *int    `json:"id"`
 	}
-
 	var edition ResponsePayload
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
@@ -93,7 +92,6 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 	c.db.QueryRowContext(_context,
 		"SELECT id, title, edition_year FROM editions WHERE id = ?",
 		parsedEditionId).Scan(&edition.EditionId, &edition.Title, &edition.Year)
-
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, err, req)
 		return
@@ -104,4 +102,55 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 	}
 
 	c.res.SuccessWithStatusOKJSON(ctx, req, edition)
+}
+
+func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
+	editionId := ctx.Param("editionId")
+	parsedEditionId, err := strconv.Atoi(editionId)
+	if err != nil {
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	type Edition struct {
+		Id            *int       `json:"id"`
+		PublishedAt   *time.Time `json:"published_at"`
+		Title         *string    `json:"title"`
+		ActiveEdition *int       `json:"active_edition"`
+	}
+
+	var edition Edition
+	var publishedAt []uint8
+
+	err = c.db.QueryRowContext(_context,
+		`SELECT 
+				e.id,
+        published_at, 
+        title,
+        ae.edition_id as active_edition
+      FROM active_edition ae, editions e
+      WHERE e.id = ?`, parsedEditionId).Scan(
+		&edition.Id,
+		&publishedAt,
+		&edition.Title,
+		&edition.ActiveEdition,
+	)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
+		return
+	}
+	if err == sql.ErrNoRows {
+		c.res.AbortEditionNotFound(ctx, err, err.Error(), nil)
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	edition.PublishedAt = lib.Base64ToTime(publishedAt)
+
+	c.res.SuccessWithStatusOKJSON(ctx, nil, edition)
 }
