@@ -15,7 +15,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 	editions := []*EditionResponseModel{}
 	rows, err := c.db.Query(`SELECT editions.id, title, thumbnail_img, cover_img, published_at, edition_year, edition_id as active_edition FROM editions, active_edition ORDER BY created_at DESC`)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -33,7 +33,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 			&edition.EditionYear,
 			&activeEdition,
 		); err != nil {
-			log.Println(err.Error())
+			c.res.AbortDatabaseError(ctx, err, nil)
 		}
 		edition.PublishedAt = lib.Base64ToTime(publishedAt)
 		editions = append(editions, &edition)
@@ -51,9 +51,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 
 	time.Sleep(5 * time.Second)
 
-	ctx.JSON(200, gin.H{
-		"data": responseData,
-	})
+	c.res.SuccessWithStatusOKJSON(ctx, nil, responseData)
 }
 
 func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
