@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,11 +18,11 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 
 	rows, err := c.db.QueryContext(_context, `SELECT * FROM writers ORDER BY id`)
 	if _context.Err() == context.DeadlineExceeded {
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"error": "request timed out"})
+		c.res.AbortDatabaseTimeout(ctx, err, nil)
 		return
 	}
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
@@ -32,16 +31,15 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 	for rows.Next() {
 		var w writer
 		if err := rows.Scan(&w.Id, &w.WriterName); err != nil {
-			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.res.AbortDatabaseError(ctx, err, nil)
 			return
 		}
 		writers = append(writers, &w)
 	}
 	if err := rows.Err(); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"data": writers,
-	})
+
+	c.res.SuccessWithStatusOKJSON(ctx, nil, writers)
 }
