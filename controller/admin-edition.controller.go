@@ -2,8 +2,6 @@ package controller
 
 import (
 	"context"
-	"log"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -62,16 +60,14 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid edition id"})
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
 		return
 	}
 
 	var req RequestPayload
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid request",
-			"details": err.Error(),
-		})
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -99,16 +95,13 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 		parsedEditionId).Scan(&edition.EditionId, &edition.Title, &edition.Year)
 
 	if _context.Err() == context.DeadlineExceeded {
-		ctx.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{"error": "request timed out"})
+		c.res.AbortDatabaseTimeout(ctx, err, req)
 		return
 	}
 	if err != nil {
-		log.Println(err)
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.res.AbortDatabaseError(ctx, err, req)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"data": edition,
-	})
+	c.res.SuccessWithStatusOKJSON(ctx, req, edition)
 }
