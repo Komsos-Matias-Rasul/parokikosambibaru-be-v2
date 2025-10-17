@@ -116,3 +116,9 @@ func (r *Responses) AbortArticleNotFound(ctx *gin.Context, err error,
 	r.AbortWithStatusJSON(ctx, err, ErrArticleNotFound.Error(),
 		details, http.StatusNotFound, reqData)
 }
+
+func (r *Responses) AbortEditionNotFound(ctx *gin.Context, err error,
+	details string, reqData any) {
+	r.AbortWithStatusJSON(ctx, err, ErrArticleNotFound.Error(),
+		details, http.StatusNotFound, reqData)
+}

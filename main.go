@@ -56,6 +56,7 @@ func main() {
 	*/
 	app.GET("/api/core/editions", c.CoreGetAllEditions)
 	app.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
+	app.GET("/api/core/editions/:editionId", c.CoreGetEditionInfo)
 	app.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
 	app.POST("/api/core/edition")
 
@@ -69,8 +70,8 @@ func main() {
 
 	app.GET("/api/core/drafts", c.CoreGetDrafts)
 
-	app.GET("/api/core/categories", c.GetCategoriesByEdition)
-	app.GET("/api/core/categories/by-article", c.GetCategoriesByArticle)
+	app.GET("/api/core/categories/by-edition/:editionId", c.GetCategoriesByEdition)
+	app.GET("/api/core/categories/by-article/:articleId", c.GetCategoriesByArticle)
 
 	app.GET("/api/core/writers", c.CoreGetAllWriters)
 

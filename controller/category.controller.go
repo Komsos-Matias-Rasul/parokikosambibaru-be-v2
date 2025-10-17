@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
-	editionIdParam := ctx.Query("edition")
+	editionIdParam := ctx.Param("editionId")
 	editionId, err := strconv.Atoi(editionIdParam)
 	if err != nil {
 		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
@@ -47,7 +47,7 @@ func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
 }
 
 func (c *Controller) GetCategoriesByArticle(ctx *gin.Context) {
-	articleIdParam := ctx.Query("article")
+	articleIdParam := ctx.Param("articleId")
 	articleId, err := strconv.Atoi(articleIdParam)
 	if err != nil {
 		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)

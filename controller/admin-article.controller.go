@@ -72,18 +72,14 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 		Title                *string    `json:"title"`
 		Writer               *string    `json:"writer"`
 		Category             *string    `json:"category"`
-		ArticlePublishedDate *time.Time `json:"article_published_date"`
+		ArticlePublishedDate *time.Time `json:"published_at"`
 		EditionId            *string    `json:"edition_id"`
 	}
-
-	var activeEdition int
-	var editionTitle string
-	var editionPublishedDate []uint8
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	var articles []*article
+	articles := []*article{}
 	rows, err := c.db.QueryContext(_context,
 		`SELECT 
         a.id, 
@@ -91,9 +87,6 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
         w.writer_name as writer,
         c.label as category, 
         a.published_date,
-        e.published_at as ed_publish_date, 
-        e.title as ed_title,
-        ae.edition_id as active_edition, 
         e.id as edition_id
       FROM active_edition ae, articles a 
       JOIN categories c ON c.id = a.category_id 
@@ -119,9 +112,6 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 			&article.Writer,
 			&article.Category,
 			&articlePublishedDate,
-			&editionPublishedDate,
-			&editionTitle,
-			&activeEdition,
 			&article.EditionId,
 		); err != nil {
 			log.Println(err.Error())
@@ -130,21 +120,7 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 		articles = append(articles, &article)
 	}
 
-	type ResponseModel struct {
-		Articles             []*article `json:"articles"`
-		ActiveEdition        int        `json:"active_edition"`
-		EditionPublishedDate *time.Time `json:"edition_published_date"`
-		EditionTitle         string     `json:"edition_title"`
-	}
-
-	responseData := ResponseModel{
-		Articles:      articles,
-		ActiveEdition: activeEdition,
-		EditionTitle:  editionTitle,
-	}
-	responseData.EditionPublishedDate = lib.Base64ToTime(editionPublishedDate)
-
-	c.res.SuccessWithStatusOKJSON(ctx, nil, responseData)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
 }
 
 func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
@@ -366,10 +342,10 @@ func formatTitleToSlug(title string) string {
 
 func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 	type RequestPayload struct {
-		TitleData    string `json:"titleData"`
-		CategoryData int    `json:"categoryData"`
-		WriterData   int    `json:"writerData"`
-		IDData       int    `json:"IDData"`
+		Title    string `json:"title"`
+		Category int    `json:"category"`
+		Writer   int    `json:"writer"`
+		Id       int    `json:"id"`
 	}
 
 	var payload RequestPayload
@@ -378,7 +354,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 		return
 	}
 
-	slug := formatTitleToSlug(payload.TitleData)
+	slug := formatTitleToSlug(payload.Title)
 	now := time.Now().UTC()
 
 	_, err := c.db.Exec(`
@@ -386,11 +362,11 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 		SET updated_at = ?, title = ?, slug = ?, category_id = ?, writer_id = ?
 		WHERE id = ?`,
 		now,
-		payload.TitleData,
+		payload.Title,
 		slug,
-		payload.CategoryData,
-		payload.WriterData,
-		payload.IDData,
+		payload.Category,
+		payload.Writer,
+		payload.Id,
 	)
 
 	if err != nil {
@@ -398,6 +374,6 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 		return
 	}
 
-	res := gin.H{"message": "attributes saved successfully", "article_id": payload.IDData}
+	res := gin.H{"message": "attributes saved successfully", "article_id": payload.Id}
 	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
 }
