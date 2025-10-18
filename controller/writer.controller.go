@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,4 +44,36 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 	}
 
 	c.res.SuccessWithStatusOKJSON(ctx, nil, writers)
+}
+
+func (c *Controller) CoreCreateWriter(ctx *gin.Context) {
+	if ctx.Request.Body == nil {
+		c.res.AbortInvalidRequestBody(ctx, lib.ErrInvalidBody, "missing request body", nil)
+		return
+	}
+
+	type reqBody struct {
+		Writer string `json:"writer"`
+	}
+
+	var payload reqBody
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), time.Second*10)
+	defer cancel()
+
+	_, err := c.db.ExecContext(_context, "INSERT INTO writers (writer_name) VALUES (?)", payload.Writer)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, payload)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
+	}
+
+	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, payload, gin.H{"message": "writer created successfully"})
 }

@@ -74,6 +74,7 @@ func main() {
 	app.GET("/api/core/categories/by-article/:articleId", c.GetCategoriesByArticle)
 
 	app.GET("/api/core/writers", c.CoreGetAllWriters)
+	app.POST("/api/core/writer", c.CoreCreateWriter)
 
 	/*
 		*
