@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -153,4 +154,53 @@ func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
 	edition.PublishedAt = lib.Base64ToTime(publishedAt)
 
 	c.res.SuccessWithStatusOKJSON(ctx, nil, edition)
+}
+
+func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
+
+	type ReqBody struct {
+		Title string `json:"title"`
+		Year  int    `json:"year"`
+	}
+
+	var payload ReqBody
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+		return
+	}
+
+	if payload.Year < 1970 {
+		c.res.AbortInvalidRequestBody(ctx, lib.ErrInvalidBody, "year must be greater than 1970", payload)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	res, err := c.db.ExecContext(_context,
+		"INSERT INTO editions (title, edition_year) VALUES (?, ?)", &payload.Title, &payload.Year)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, payload)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
+	}
+
+	time.Sleep(time.Second * 5)
+
+	c.res.SuccessWithStatusJSON(
+		ctx,
+		http.StatusCreated,
+		payload,
+		gin.H{"message": "edition created successfully", "id": id},
+	)
+
 }
