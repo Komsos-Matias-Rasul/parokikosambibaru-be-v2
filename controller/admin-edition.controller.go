@@ -72,27 +72,16 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 		return
 	}
 
-	type ResponsePayload struct {
-		Title     *string `json:"title"`
-		Year      *int    `json:"year"`
-		EditionId *int    `json:"id"`
-	}
-	var edition ResponsePayload
-
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	_, err = c.db.QueryContext(_context,
+	_, err = c.db.ExecContext(_context,
 		`
 		UPDATE editions
 		SET title = ?,
 		edition_year = ?
 		WHERE id = ?
 		`, req.Title, req.Year, parsedEditionId)
-
-	c.db.QueryRowContext(_context,
-		"SELECT id, title, edition_year FROM editions WHERE id = ?",
-		parsedEditionId).Scan(&edition.EditionId, &edition.Title, &edition.Year)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, err, req)
 		return
@@ -102,7 +91,11 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 		return
 	}
 
-	c.res.SuccessWithStatusOKJSON(ctx, req, edition)
+	c.res.SuccessWithStatusOKJSON(
+		ctx,
+		req,
+		gin.H{"message": "edition updated successfully", "id": editionId},
+	)
 }
 
 func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
@@ -177,8 +170,10 @@ func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
 
+	imgPath := "/static/placeholder.jpg"
 	res, err := c.db.ExecContext(_context,
-		"INSERT INTO editions (title, edition_year) VALUES (?, ?)", &payload.Title, &payload.Year)
+		"INSERT INTO editions (title, edition_year, thumbnail_img, cover_img) VALUES (?, ?, ?, ?)",
+		&payload.Title, &payload.Year, imgPath, imgPath)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, err, payload)
 		return
@@ -194,13 +189,72 @@ func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
 		return
 	}
 
-	time.Sleep(time.Second * 5)
-
 	c.res.SuccessWithStatusJSON(
 		ctx,
 		http.StatusCreated,
 		payload,
 		gin.H{"message": "edition created successfully", "id": id},
 	)
+}
 
+func (c *Controller) CorePublishEdition(ctx *gin.Context) {
+	editionId := ctx.Param("editionId")
+	parsedEditionId, err := strconv.Atoi(editionId)
+	if err != nil {
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	tx, err := c.db.BeginTx(_context, nil)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	_, err = tx.ExecContext(_context, `
+		UPDATE active_edition
+		SET edition_id = ?
+	`, parsedEditionId)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	now := time.Now().UTC()
+	_, err = tx.ExecContext(_context, `
+		UPDATE editions
+		SET published_at = ?
+		WHERE id = ?
+	`, now, parsedEditionId)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	c.res.SuccessWithStatusOKJSON(
+		ctx,
+		nil,
+		gin.H{"message": "edition published successfully", "id": editionId},
+	)
 }
