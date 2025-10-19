@@ -12,15 +12,28 @@ import (
 )
 
 func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
 	editions := []*EditionResponseModel{}
-	rows, err := c.db.Query(`SELECT editions.id, title, thumbnail_img, cover_img, published_at, edition_year, edition_id as active_edition FROM editions, active_edition ORDER BY created_at DESC`)
+	rows, err := c.db.QueryContext(_context, `
+		SELECT editions.id, title, thumbnail_img,
+			cover_img, published_at, edition_year,
+			edition_id as active_edition
+		FROM editions, active_edition
+		ORDER BY created_at DESC
+	`)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, nil)
+		return
+	}
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 	defer rows.Close()
-	var activeEdition int
 
+	var activeEdition int
 	for rows.Next() {
 		var edition EditionResponseModel
 		var publishedAt []uint8
