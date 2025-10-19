@@ -120,7 +120,7 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 		articles = append(articles, &article)
 	}
 
-	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"articles": articles})
 }
 
 func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
@@ -167,7 +167,7 @@ func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
 		articles = append(articles, &article)
 	}
 
-	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"articles": articles})
 }
 
 func (c *Controller) CoreArchiveArticle(ctx *gin.Context) {

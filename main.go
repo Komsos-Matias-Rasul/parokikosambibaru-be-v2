@@ -58,7 +58,8 @@ func main() {
 	app.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
 	app.GET("/api/core/editions/:editionId", c.CoreGetEditionInfo)
 	app.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
-	app.POST("/api/core/edition")
+	app.PUT("/api/core/editions/publish/:editionId", c.CorePublishEdition)
+	app.POST("/api/core/edition", c.CoreCreateEdition)
 
 	app.PUT("/api/core/articles/:articleId/archive", c.CoreArchiveArticle)
 	app.DELETE("/api/core/articles/:articleId", c.CoreDeleteArticlePermanent)
