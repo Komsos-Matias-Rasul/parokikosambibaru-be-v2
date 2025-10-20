@@ -280,10 +280,11 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	const UNCATEGORIZED = 1
 	const UNKNOWN_WRITER = 1
 	now := time.Now().UTC()
+	imgPath := "/static/placeholder.jpg"
 	article, err := c.db.Exec(`
-		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, editionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now)
+		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, headline_img, thumb_img)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, editionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath)
 
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
@@ -376,4 +377,88 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 
 	res := gin.H{"message": "attributes saved successfully", "article_id": payload.Id}
 	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
+}
+
+func (c *Controller) CoreGetArticleInfo(ctx *gin.Context) {
+	articleId := ctx.Param("articleId")
+	parsedArticleId, err := strconv.Atoi(articleId)
+	if err != nil {
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
+		return
+	}
+
+	type Article struct {
+		Id         *int    `json:"id"`
+		Title      *string `json:"title"`
+		WriterId   *int    `json:"writer_id"`
+		CategoryId *int    `json:"category_id"`
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	var article Article
+	err = c.db.QueryRowContext(_context, `
+		SELECT id, title, writer_id, category_id
+		FROM articles
+    WHERE id = ?`, parsedArticleId).Scan(
+		&article.Id,
+		&article.Title,
+		&article.WriterId,
+		&article.CategoryId,
+	)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
+		return
+	}
+	if err == sql.ErrNoRows {
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
+}
+
+func (c *Controller) CoreGetArticleContent(ctx *gin.Context) {
+	articleId := ctx.Param("articleId")
+	parsedArticleId, err := strconv.Atoi(articleId)
+	if err != nil {
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
+		return
+	}
+
+	type Article struct {
+		Id       *int    `json:"id"`
+		Contents *string `json:"contents"`
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	var article Article
+	err = c.db.QueryRowContext(_context, `
+		SELECT id, content_json
+		FROM articles
+    WHERE id = ?`, parsedArticleId).Scan(
+		&article.Id,
+		&article.Contents,
+	)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
+		return
+	}
+	if err == sql.ErrNoRows {
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
