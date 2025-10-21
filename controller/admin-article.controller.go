@@ -23,25 +23,29 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 		return
 	}
 
-	type article struct {
-		Title       *string `json:"title"`
-		WriterId    *int    `json:"writer_id"`
-		HeadlineImg *string `json:"headline_img"`
-		ContentJSON *string `json:"content_json"`
-		CategoryId  *int    `json:"category_id"`
+	type Article struct {
+		Title       *string    `json:"title"`
+		WriterId    *int       `json:"writerId"`
+		HeadlineImg *string    `json:"headlineImg"`
+		ContentJSON *string    `json:"contents"`
+		CategoryId  *int       `json:"categoryId"`
+		UpdatedAt   *time.Time `json:"updatedAt"`
 	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	var row article
-	err = c.db.QueryRowContext(_context, `SELECT title, writer_id, headline_img, content_json, category_id FROM articles
-      WHERE articles.id = ?`, parsedArticleId).Scan(
-		&row.Title,
-		&row.WriterId,
-		&row.HeadlineImg,
-		&row.ContentJSON,
-		&row.CategoryId,
+	var article Article
+	var updatedAt []uint8
+	err = c.db.QueryRowContext(_context, `
+			SELECT title, writer_id, headline_img, content_json, category_id, updated_at
+			FROM articles WHERE articles.id = ?`, parsedArticleId).Scan(
+		&article.Title,
+		&article.WriterId,
+		&article.HeadlineImg,
+		&article.ContentJSON,
+		&article.CategoryId,
+		&updatedAt,
 	)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
@@ -55,8 +59,9 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
+	article.UpdatedAt = lib.Base64ToTime(updatedAt)
 
-	c.res.SuccessWithStatusOKJSON(ctx, nil, row)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
 
 func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
@@ -303,11 +308,15 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 }
 
 func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
+	articleIdParam := ctx.Param("articleId")
+	articleId, err := strconv.Atoi(articleIdParam)
+	if err != nil {
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
+		return
+	}
+
 	type SaveDraftPayload struct {
-		ArticleData struct {
-			Content json.RawMessage `json:"content"`
-		} `json:"articleData"`
-		IDData int `json:"IDData"`
+		Contents json.RawMessage `json:"contents"`
 	}
 	var payload SaveDraftPayload
 	if err := ctx.BindJSON(&payload); err != nil {
@@ -317,18 +326,24 @@ func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
 
 	now := time.Now().UTC()
 
-	_, err := c.db.Exec(`
+	_, err = c.db.Exec(`
         UPDATE articles
         SET content_json = ?, updated_at = ?
         WHERE id = ?
-    `, string(payload.ArticleData.Content), now, payload.IDData)
+    `, string(payload.Contents), now, articleId)
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
 		return
 	}
 
-	res := gin.H{"message": "draft saved successfully", "article_id": payload.IDData}
-	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
+	c.res.SuccessWithStatusOKJSON(
+		ctx,
+		gin.H{"content": "content JSON (hidden)"},
+		gin.H{
+			"message":   "draft saved successfully",
+			"id":        articleId,
+			"updatedAt": now,
+		})
 }
 
 func formatTitleToSlug(title string) string {

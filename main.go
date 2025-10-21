@@ -65,7 +65,7 @@ func main() {
 	app.DELETE("/api/core/articles/:articleId", c.CoreDeleteArticlePermanent)
 	app.POST("/api/core/articles/publish/:articleId", c.CorePublishArticle)
 	app.POST("/api/core/articles/create/:editionId", c.CoreCreateArticle)
-	app.POST("/api/core/articles/saveDraft", c.CoreSaveDraft)
+	app.PUT("/api/core/articles/:articleId/save-draft", c.CoreSaveDraft)
 	app.POST("/api/core/articles/saveTWC", c.CoreSaveTWC)
 	app.GET("/api/core/articles/:articleId", c.CoreGetArticleById)
 	app.GET("/api/core/articles/:articleId/info", c.CoreGetArticleInfo)
