@@ -86,6 +86,7 @@ func main() {
 			IMAGE API ROUTES
 			---
 	*/
+	app.PUT("/api/core/covers/article/:articleId", c.UpdateArticleImgFileName)
 	// app.GET("/api/core/covers/edition/:editionId", c.GetZaitunCoverImg)  // unimplemented
 	// app.GET("/api/core/covers/article/:articleId", c.GetArticleCoverImg) //
 	// app.GET("/api/ads/:year/:fileName", c.GetAdImage)
