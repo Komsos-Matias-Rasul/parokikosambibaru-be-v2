@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +19,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) UpdateArticleImgFileName(ctx *gin.Context) {
+var SourceGCS string = "google-cloud"
+var SourceInput string = "user-input"
+
+func (c *Controller) RenameArticleHeadline(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
@@ -26,17 +31,65 @@ func (c *Controller) UpdateArticleImgFileName(ctx *gin.Context) {
 	}
 
 	type Request struct {
-		NewHeadline   string `json:"newHeadline"`
-		FileExtension string `json:"fileExtension"`
+		NewHeadline string `json:"newHeadline"`
+		Source      string `json:"source"`
 	}
 	var payload Request
 	if err := ctx.BindJSON(&payload); err != nil {
 		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
+	if strings.TrimSpace(payload.NewHeadline) == "" {
+		c.res.AbortInvalidRequestBody(ctx,
+			errors.New("newHeadline is empty"),
+			"source must be either google-cloud or user-input",
+			payload,
+		)
+		return
+	}
+	validExt := regexp.MustCompile(`(?i)\.(png|jpe?g|webp)$`)
+	if !validExt.MatchString(payload.NewHeadline) {
+		c.res.AbortInvalidRequestBody(ctx,
+			errors.New("invalid file extension"),
+			`newHeadline must have extension (.png, .jpg, .jpeg, .webp)`,
+			payload,
+		)
+		return
+	}
+	if payload.Source != SourceGCS && payload.Source != SourceInput {
+		c.res.AbortInvalidRequestBody(ctx,
+			errors.New("invalid source field"),
+			"source must be either google-cloud or user-input",
+			payload,
+		)
+		return
+	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
+
+	if payload.Source == SourceGCS {
+		now := time.Now().UTC()
+		if _, err = c.db.ExecContext(_context, `
+		UPDATE articles
+		SET headline_img = ?, updated_at = ?
+		WHERE id = ?
+		`, payload.NewHeadline, now, parsedArticleId); err != nil {
+			c.res.AbortDatabaseError(ctx, err, payload)
+			return
+		}
+		if _context.Err() == context.DeadlineExceeded {
+			c.res.AbortDatabaseTimeout(ctx, _context.Err(), payload)
+			return
+		}
+
+		c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{
+			"message":   "Filename updated successfully",
+			"id":        parsedArticleId,
+			"updatedAt": now,
+		})
+		return
+	}
 
 	var oldHeadline, oldThumbnail string
 	var year int
@@ -62,13 +115,55 @@ func (c *Controller) UpdateArticleImgFileName(ctx *gin.Context) {
 		return
 	}
 
-	oldHeadline, _ = strings.CutPrefix(oldHeadline, "/")
-	oldThumbnail, _ = strings.CutPrefix(oldThumbnail, "/")
+	escapedOldHeadlineObj := strings.TrimPrefix(oldHeadline, "/")
+	escapedOldThumbnailObj := strings.TrimPrefix(oldThumbnail, "/")
 
-	newHeadline := fmt.Sprintf("zaitun/articles/%d/%d/%s.%s",
-		year, parsedArticleId, payload.NewHeadline, payload.FileExtension)
-	newThumbnail := fmt.Sprintf("zaitun/articles/%d/%d/%s_thumb.webp",
+	// remove headline file extension
+	splitNewHeadline := strings.Split(payload.NewHeadline, ".")
+	trimNewHeadline := strings.TrimSuffix(
+		payload.NewHeadline, fmt.Sprintf(".%s", splitNewHeadline[len(splitNewHeadline)-1]))
+
+	// this used to store into db
+	escapedNewHeadline := fmt.Sprintf("/zaitun/articles/%d/%d/%s",
 		year, parsedArticleId, payload.NewHeadline)
+	escapedNewThumbnail := fmt.Sprintf("/zaitun/articles/%d/%d/thumb_%s.jpg",
+		year, parsedArticleId, trimNewHeadline)
+
+	// this used to update object in GCS
+	newHeadlineObj := fmt.Sprintf("zaitun/articles/%d/%d/%s",
+		year, parsedArticleId, payload.NewHeadline)
+	newThumbnailObj := fmt.Sprintf("zaitun/articles/%d/%d/thumb_%s.jpg",
+		year, parsedArticleId, trimNewHeadline)
+
+	// from "file%20name.jpg" to "file name.jpg"
+	oldHeadlineObj, err := url.PathUnescape(escapedOldHeadlineObj)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to decode headline",
+			err.Error(), http.StatusInternalServerError, payload)
+		return
+	}
+	oldThumbnailObj, err := url.PathUnescape(escapedOldThumbnailObj)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to decode thumbnail",
+			err.Error(), http.StatusInternalServerError, payload)
+		return
+	}
+	newHeadlineObj, err = url.PathUnescape(newHeadlineObj)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to decode headline",
+			err.Error(), http.StatusInternalServerError, payload)
+		return
+	}
+	newThumbnailObj, err = url.PathUnescape(newThumbnailObj)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to decode thumbnail",
+			err.Error(), http.StatusInternalServerError, payload)
+		return
+	}
 
 	tx, err := c.db.BeginTx(_context, nil)
 	if err != nil {
@@ -79,17 +174,17 @@ func (c *Controller) UpdateArticleImgFileName(ctx *gin.Context) {
 		UPDATE articles
 		SET headline_img = ?, thumb_img = ?
 		WHERE id = ?
-	`, fmt.Sprintf("/%s", newHeadline), fmt.Sprintf("/%s", newThumbnail), parsedArticleId); err != nil {
+	`, escapedNewHeadline, escapedNewThumbnail, parsedArticleId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
 		return
 	}
 
-	_, err = services.MoveObject(_context, oldHeadline, newHeadline)
+	_, err = services.MoveObject(_context, oldHeadlineObj, newHeadlineObj)
 	if err != nil {
 		c.res.AbortStorageError(ctx, err, payload)
 		return
 	}
-	thumbnailAttrs, err := services.MoveObject(_context, oldThumbnail, newThumbnail)
+	thumbnailAttrs, err := services.MoveObject(_context, oldThumbnailObj, newThumbnailObj)
 	if err != nil {
 		c.res.AbortStorageError(ctx, err, payload)
 		return

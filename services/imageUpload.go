@@ -2,25 +2,68 @@ package services
 
 import (
 	"context"
-	"io"
-	"mime/multipart"
+	"fmt"
+	"net/http"
+	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 )
 
-func UploadImage(file multipart.File, fileName string, ctx context.Context) error {
+func UploadImage(ctx context.Context, destination string, contentType string) (*string, error) {
 	client, err := lib.GetCloudStorage(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer client.CloudStorageClient.Close()
-	w := client.StorageBucket.Object(fileName).NewWriter(ctx)
-	if _, err = io.Copy(w, file); err != nil {
-		return err
-	}
-	if err := w.Close(); err != nil {
-		return err
-	}
 
+	opt := &storage.SignedURLOptions{
+		Scheme: storage.SigningSchemeV4,
+		Method: http.MethodPut,
+		Headers: []string{
+			fmt.Sprintf("Content-Type:%s", contentType),
+		},
+		Expires: time.Now().Add(time.Minute * 3),
+	}
+	signedUrl, err := client.StorageBucket.SignedURL(destination, opt)
+	if err != nil {
+		return nil, err
+	}
+	return &signedUrl, nil
+}
+
+func GetSignedURL(ctx context.Context, destination string, contentType string) (string, error) {
+	client, err := lib.GetCloudStorage(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer client.CloudStorageClient.Close()
+
+	opt := &storage.SignedURLOptions{
+		Scheme: storage.SigningSchemeV4,
+		Method: http.MethodPut,
+		Headers: []string{
+			fmt.Sprintf("Content-Type:%s", contentType),
+		},
+		Expires: time.Now().Add(3 * time.Minute),
+	}
+	signedUrl, err := client.StorageBucket.SignedURL(destination, opt)
+	if err != nil {
+		return "", err
+	}
+	return signedUrl, nil
+}
+
+func refreshCORS(ctx context.Context, bkt *storage.BucketHandle) error {
+	_attr := storage.BucketAttrsToUpdate{
+		CORS: []storage.CORS{{
+			Methods:         []string{http.MethodOptions, http.MethodPut},
+			Origins:         []string{"*"},
+			ResponseHeaders: []string{"Content-Type", "Accept"},
+		}},
+	}
+	if _, err := bkt.Update(ctx, _attr); err != nil {
+		return err
+	}
 	return nil
 }
