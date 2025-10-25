@@ -79,5 +79,5 @@ func (c *Controller) GetCategoriesByArticle(ctx *gin.Context) {
 		categories = append(categories, cat)
 	}
 
-	c.res.SuccessWithStatusOKJSON(ctx, nil, categories)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"categories": categories})
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
-	type writer struct {
+	type Writer struct {
 		Id         int    `json:"id"`
 		WriterName string `json:"writer_name"`
 	}
@@ -29,9 +29,9 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 	}
 	defer rows.Close()
 
-	writers := []*writer{}
+	writers := []*Writer{}
 	for rows.Next() {
-		var w writer
+		var w Writer
 		if err := rows.Scan(&w.Id, &w.WriterName); err != nil {
 			c.res.AbortDatabaseError(ctx, err, nil)
 			return
@@ -43,7 +43,7 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 		return
 	}
 
-	c.res.SuccessWithStatusOKJSON(ctx, nil, writers)
+	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"writers": writers})
 }
 
 func (c *Controller) CoreCreateWriter(ctx *gin.Context) {
