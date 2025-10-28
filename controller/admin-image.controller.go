@@ -80,7 +80,7 @@ func (c *Controller) CoreSaveEditionCover(ctx *gin.Context) {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), payload)
 		return
 	}
-	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{"url": signedUrl})
+	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{"url": signedUrl, "location": obj})
 }
 
 func (c *Controller) CoreSaveArticleCover(ctx *gin.Context) {
@@ -162,6 +162,51 @@ func (c *Controller) CoreUpdateArticleThumbnail(ctx *gin.Context) {
 		UPDATE articles
 		SET thumb_img = ?
 		WHERE id = ?`, payload.FileName, parsedArticleId); err != nil {
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
+	}
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, payload)
+		return
+	}
+
+	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{
+		"message": "thumbnail updated successfully",
+	})
+}
+
+func (c *Controller) CoreUpdateEditionThumbnail(ctx *gin.Context) {
+	editionId := ctx.Param("editionId")
+	parsedEditionId, err := strconv.Atoi(editionId)
+	if err != nil {
+		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
+		return
+	}
+
+	type Request struct {
+		FileName string `json:"fileName"`
+	}
+	var payload Request
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+		return
+	}
+	if strings.TrimSpace(payload.FileName) == "" {
+		c.res.AbortInvalidRequestBody(
+			ctx,
+			errors.New("empty filename"),
+			"empty filename",
+			nil,
+		)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	defer cancel()
+	if _, err := c.db.ExecContext(_context, `
+		UPDATE editions
+		SET thumbnail_img = ?
+		WHERE id = ?`, payload.FileName, parsedEditionId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
 		return
 	}

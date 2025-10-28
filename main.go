@@ -54,27 +54,34 @@ func main() {
 			ZAITUN ADMIN API ROUTES
 			---
 	*/
-	app.GET("/api/core/editions", c.CoreGetAllEditions)
-	app.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
-	app.GET("/api/core/editions/:editionId", c.CoreGetEditionInfo)
-	app.PUT("/api/core/editions/:editionId", c.CoreEditEditionInfo)
-	app.PUT("/api/core/editions/publish/:editionId", c.CorePublishEdition)
 	app.POST("/api/core/edition", c.CoreCreateEdition)
+	app.GET("/api/core/editions", c.CoreGetAllEditions)
+	app.GET("/api/core/editions/:editionId/info", c.CoreGetEditionInfo)
+	app.GET("/api/core/editions/:editionId/articles", c.CoreGetArticleByEdition)
 
-	app.PUT("/api/core/articles/:articleId/archive", c.CoreArchiveArticle)
-	app.DELETE("/api/core/articles/:articleId", c.CoreDeleteArticlePermanent)
-	app.POST("/api/core/articles/publish/:articleId", c.CorePublishArticle)
-	app.POST("/api/core/articles/create/:editionId", c.CoreCreateArticle)
-	app.PUT("/api/core/articles/:articleId/save-draft", c.CoreSaveDraft)
-	app.POST("/api/core/articles/saveTWC", c.CoreSaveTWC)
+	app.PUT("/api/core/editions/:editionId/save-info", c.CoreEditEditionInfo)
+	app.PUT("/api/core/editions/:editionId/publish", c.CorePublishEdition)
+
+	app.POST("/api/core/editions/:editionId/cover", c.CoreSaveEditionCover)
+	app.PUT("/api/core/editions/:editionId/cover/thumbnail", c.CoreUpdateEditionThumbnail)
+	app.PUT("/api/core/editions/:editionId/cover/rename", c.RenameEditionCover)
+
+	app.POST("/api/core/article", c.CoreCreateArticle)
 	app.GET("/api/core/articles/:articleId", c.CoreGetArticleById)
 	app.GET("/api/core/articles/:articleId/info", c.CoreGetArticleInfo)
+
+	app.PUT("/api/core/articles/:articleId/save-info", c.CoreSaveTWC)
+	app.PUT("/api/core/articles/:articleId/save-draft", c.CoreSaveDraft)
+	app.PUT("/api/core/articles/:articleId/publish", c.CorePublishArticle)
+	app.PUT("/api/core/articles/:articleId/archive", c.CoreArchiveArticle)
+	app.DELETE("/api/core/articles/:articleId", c.CoreDeleteArticlePermanent)
+
 	app.GET("/api/core/articles/:articleId/cover", c.GetArticleCoverImg)
+	app.GET("/api/core/articles/:articleId/contents", c.CoreGetArticleContent)
 	app.POST("/api/core/articles/:articleId/cover", c.CoreSaveArticleCover)
+	app.POST("/api/core/articles/:articleId/images", c.CoreSaveArticleImageContents)
 	app.PUT("/api/core/articles/:articleId/cover/rename", c.RenameArticleHeadline)
 	app.PUT("/api/core/articles/:articleId/cover/thumbnail", c.CoreUpdateArticleThumbnail)
-	app.GET("/api/core/articles/:articleId/contents", c.CoreGetArticleContent)
-	app.POST("/api/core/articles/:articleId/images", c.CoreSaveArticleImageContents)
 
 	app.GET("/api/core/drafts", c.CoreGetDrafts)
 
@@ -90,12 +97,7 @@ func main() {
 			IMAGE API ROUTES
 			---
 	*/
-	app.PUT("/api/core/covers/article/:articleId", c.RenameArticleHeadline)
-	// app.GET("/api/core/covers/edition/:editionId", c.GetZaitunCoverImg)  // unimplemented
-	// app.GET("/api/core/covers/article/:articleId", c.GetArticleCoverImg) //
 	// app.GET("/api/ads/:year/:fileName", c.GetAdImage)
-	// app.POST("/api/core/cover/edition/save", c.CoreSaveEditionCover)
-	// app.POST("/api/core/content/article/save", c.CoreSaveArticleContent)
 
 	app.Run(fmt.Sprintf("0.0.0.0:%d", conf.SERVER_PORT))
 }
