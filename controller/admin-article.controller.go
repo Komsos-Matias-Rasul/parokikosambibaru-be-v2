@@ -275,10 +275,12 @@ func (c *Controller) CorePublishArticle(ctx *gin.Context) {
 }
 
 func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
-	editionIdParam := ctx.Param("editionId")
-	editionId, err := strconv.Atoi(editionIdParam)
-	if err != nil {
-		c.res.AbortInvalidEdition(ctx, err, err.Error(), nil)
+	type Request struct {
+		EditionId int `json:"editionId"`
+	}
+	var payload Request
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
 
@@ -289,7 +291,7 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	article, err := c.db.Exec(`
 		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, headline_img, thumb_img)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, editionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath)
+	`, payload.EditionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath)
 
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
@@ -357,11 +359,17 @@ func formatTitleToSlug(title string) string {
 }
 
 func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
+	articleId := ctx.Param("articleId")
+	parsedArticleId, err := strconv.Atoi(articleId)
+	if err != nil {
+		c.res.AbortInvalidArticle(ctx, err, err.Error(), nil)
+		return
+	}
+
 	type RequestPayload struct {
 		Title    string `json:"title"`
 		Category int    `json:"category"`
 		Writer   int    `json:"writer"`
-		Id       int    `json:"id"`
 	}
 
 	var payload RequestPayload
@@ -373,7 +381,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 	slug := formatTitleToSlug(payload.Title)
 	now := time.Now().UTC()
 
-	_, err := c.db.Exec(`
+	_, err = c.db.Exec(`
 		UPDATE articles
 		SET updated_at = ?, title = ?, slug = ?, category_id = ?, writer_id = ?
 		WHERE id = ?`,
@@ -382,7 +390,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 		slug,
 		payload.Category,
 		payload.Writer,
-		payload.Id,
+		parsedArticleId,
 	)
 
 	if err != nil {
@@ -390,7 +398,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 		return
 	}
 
-	res := gin.H{"message": "attributes saved successfully", "article_id": payload.Id}
+	res := gin.H{"message": "attributes saved successfully", "article_id": parsedArticleId}
 	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
 }
 
