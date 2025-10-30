@@ -17,7 +17,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 
 	editions := []*EditionResponseModel{}
 	rows, err := c.db.QueryContext(_context, `
-		SELECT editions.id, title, thumbnail_img,
+		SELECT editions.id, title, thumb_img,
 			cover_img, published_at, edition_year,
 			edition_id as active_edition
 		FROM editions, active_edition
@@ -54,7 +54,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 
 	type ResponseModel struct {
 		Editions      []*EditionResponseModel `json:"editions"`
-		ActiveEdition int                     `json:"active_edition"`
+		ActiveEdition int                     `json:"activeEdition"`
 	}
 
 	responseData := ResponseModel{
@@ -124,9 +124,9 @@ func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
 
 	type Edition struct {
 		Id            *int       `json:"id"`
-		PublishedAt   *time.Time `json:"published_at"`
+		PublishedAt   *time.Time `json:"publishedAt"`
 		Title         *string    `json:"title"`
-		ActiveEdition *int       `json:"active_edition"`
+		ActiveEdition *int       `json:"activeEdition"`
 	}
 
 	var edition Edition
@@ -185,7 +185,7 @@ func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
 
 	imgPath := "/static/placeholder.jpg"
 	res, err := c.db.ExecContext(_context,
-		"INSERT INTO editions (title, edition_year, thumbnail_img, cover_img) VALUES (?, ?, ?, ?)",
+		"INSERT INTO editions (title, edition_year, thumb_img, cover_img) VALUES (?, ?, ?, ?)",
 		&payload.Title, &payload.Year, imgPath, imgPath)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, err, payload)

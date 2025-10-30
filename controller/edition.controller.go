@@ -12,16 +12,16 @@ import (
 type EditionResponseModel struct {
 	Id           int        `json:"id"`
 	Title        string     `json:"title"`
-	PublishedAt  *time.Time `json:"published_at"`
-	EditionYear  *int       `json:"edition_year"`
-	CoverImg     *string    `json:"cover_img"`
-	ThumbnailImg *string    `json:"thumbnail_img"`
+	PublishedAt  *time.Time `json:"publishedAt"`
+	EditionYear  *int       `json:"year"`
+	CoverImg     *string    `json:"coverImg"`
+	ThumbnailImg *string    `json:"thumbImg"`
 }
 
 func (c *Controller) GetAllEditions(ctx *gin.Context) {
 	editions := []*EditionResponseModel{}
 	rows, err := c.db.Query(`
-		SELECT id, title, published_at, edition_year, cover_img, thumbnail_img
+		SELECT id, title, published_at, edition_year, cover_img, thumb_img
 		FROM editions WHERE published_at IS NOT NULL`)
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
@@ -66,8 +66,8 @@ func (c *Controller) GetEditionById(ctx *gin.Context) {
 	type editionResponseModel struct {
 		Id          int                      `json:"id"`
 		Title       string                   `json:"title"`
-		EditionYear int                      `json:"edition_year"`
-		CoverIng    string                   `json:"cover_img"`
+		EditionYear int                      `json:"year"`
+		CoverIng    string                   `json:"coverImg"`
 		Categories  []*categoryResponseModel `json:"categories"`
 	}
 

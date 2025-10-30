@@ -72,7 +72,7 @@ func (c *Controller) RenameArticleHeadline(ctx *gin.Context) {
 		now := time.Now().UTC()
 		if _, err = c.db.ExecContext(_context, `
 		UPDATE articles
-		SET headline_img = ?, updated_at = ?
+		SET cover_img = ?, updated_at = ?
 		WHERE id = ?
 		`, payload.NewHeadline, now, parsedArticleId); err != nil {
 			c.res.AbortDatabaseError(ctx, err, payload)
@@ -94,7 +94,7 @@ func (c *Controller) RenameArticleHeadline(ctx *gin.Context) {
 	var oldHeadline, oldThumbnail string
 	var year int
 	err = c.db.QueryRowContext(_context, `
-	SELECT articles.headline_img, articles.thumb_img, editions.edition_year
+	SELECT articles.cover_img, articles.thumb_img, editions.edition_year
 	FROM articles
 	JOIN editions ON articles.edition_id = editions.id
 	WHERE articles.id = ?`, parsedArticleId).Scan(
@@ -172,7 +172,7 @@ func (c *Controller) RenameArticleHeadline(ctx *gin.Context) {
 	}
 	if _, err = tx.ExecContext(_context, `
 		UPDATE articles
-		SET headline_img = ?, thumb_img = ?
+		SET cover_img = ?, thumb_img = ?
 		WHERE id = ?
 	`, escapedNewHeadline, escapedNewThumbnail, parsedArticleId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
@@ -285,7 +285,7 @@ func (c *Controller) RenameEditionCover(ctx *gin.Context) {
 	var oldCover, oldThumbnail string
 	var year int
 	err = c.db.QueryRowContext(_context, `
-	SELECT cover_img, thumbnail_img, edition_year
+	SELECT cover_img, thumb_img, edition_year
 	FROM editions
 	WHERE id = ?`, parsedEditionId).Scan(
 		&oldCover, &oldThumbnail, &year)
@@ -362,7 +362,7 @@ func (c *Controller) RenameEditionCover(ctx *gin.Context) {
 	}
 	if _, err = tx.ExecContext(_context, `
 		UPDATE editions
-		SET cover_img = ?, thumbnail_img = ?
+		SET cover_img = ?, thumb_img = ?
 		WHERE id = ?
 	`, escapedNewCover, escapedNewThumbnail, parsedEditionId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
@@ -460,7 +460,7 @@ func (c *Controller) GetArticleCoverImg(ctx *gin.Context) {
 
 	var cover Cover
 	err = c.db.QueryRowContext(_context, `
-		SELECT id, headline_img, thumb_img
+		SELECT id, cover_img, thumb_img
 		FROM articles
     WHERE id = ?`, parsedArticleId).Scan(
 		&cover.ArticleId,
