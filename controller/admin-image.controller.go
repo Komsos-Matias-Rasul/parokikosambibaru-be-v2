@@ -205,7 +205,7 @@ func (c *Controller) CoreUpdateEditionThumbnail(ctx *gin.Context) {
 	defer cancel()
 	if _, err := c.db.ExecContext(_context, `
 		UPDATE editions
-		SET thumbnail_img = ?
+		SET thumb_img = ?
 		WHERE id = ?`, payload.FileName, parsedEditionId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
 		return

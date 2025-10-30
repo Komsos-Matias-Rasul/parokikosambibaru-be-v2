@@ -26,7 +26,7 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 	type Article struct {
 		Title       *string    `json:"title"`
 		WriterId    *int       `json:"writerId"`
-		HeadlineImg *string    `json:"headlineImg"`
+		CoverImg    *string    `json:"coverImg"`
 		ContentJSON *string    `json:"contents"`
 		CategoryId  *int       `json:"categoryId"`
 		UpdatedAt   *time.Time `json:"updatedAt"`
@@ -38,11 +38,11 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 	var article Article
 	var updatedAt []uint8
 	err = c.db.QueryRowContext(_context, `
-			SELECT title, writer_id, headline_img, content_json, category_id, updated_at
+			SELECT title, writer_id, cover_img, content_json, category_id, updated_at
 			FROM articles WHERE articles.id = ?`, parsedArticleId).Scan(
 		&article.Title,
 		&article.WriterId,
-		&article.HeadlineImg,
+		&article.CoverImg,
 		&article.ContentJSON,
 		&article.CategoryId,
 		&updatedAt,
@@ -77,8 +77,8 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 		Title                *string    `json:"title"`
 		Writer               *string    `json:"writer"`
 		Category             *string    `json:"category"`
-		ArticlePublishedDate *time.Time `json:"published_at"`
-		EditionId            *string    `json:"edition_id"`
+		ArticlePublishedDate *time.Time `json:"publishedAt"`
+		EditionId            *string    `json:"editionId"`
 	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
@@ -134,7 +134,7 @@ func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
 		Title              *string    `json:"title"`
 		Writer             *string    `json:"writer"`
 		Category           *string    `json:"category"`
-		ArticleUpdatedDate *time.Time `json:"updated_at"`
+		ArticleUpdatedDate *time.Time `json:"updatedAt"`
 	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
@@ -289,7 +289,7 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	now := time.Now().UTC()
 	imgPath := "/static/placeholder.jpg"
 	article, err := c.db.Exec(`
-		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, headline_img, thumb_img)
+		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, cover_img, thumb_img)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, payload.EditionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath)
 
@@ -413,8 +413,8 @@ func (c *Controller) CoreGetArticleInfo(ctx *gin.Context) {
 	type Article struct {
 		Id         *int    `json:"id"`
 		Title      *string `json:"title"`
-		WriterId   *int    `json:"writer_id"`
-		CategoryId *int    `json:"category_id"`
+		WriterId   *int    `json:"writerId"`
+		CategoryId *int    `json:"categoryId"`
 	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)

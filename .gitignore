@@ -40,3 +40,4 @@ conf/
 main
 
 *.log
+*.sql

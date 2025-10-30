@@ -26,7 +26,7 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 	defer cancel()
 
 	rows, err := c.db.QueryContext(_context, `
-	SELECT a.id, a.title, slug, w.writer_name, published_date, thumb_img, a.thumb_text, a.edition_id, e.edition_year
+	SELECT a.id, a.title, slug, w.writer_name, published_date, a.thumb_img, a.thumb_text, a.edition_id, e.edition_year
 	FROM articles as a
 	JOIN writers w ON w.id = a.writer_id
 	JOIN editions e ON e.id = a.edition_id
@@ -45,12 +45,12 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 		Id           int        `json:"id"`
 		Title        string     `json:"title"`
 		Slug         string     `json:"slug"`
-		Writer       string     `json:"writer_name"`
-		PublisedDate *time.Time `json:"published_date"`
-		ThumbImg     string     `json:"thumb_img"`
-		ThumbText    string     `json:"thumb_text"`
-		EditionId    int        `json:"edition_id"`
-		EditionYear  int        `json:"edition_year"`
+		Writer       string     `json:"writerName"`
+		PublisedDate *time.Time `json:"publishedAt"`
+		ThumbImg     string     `json:"thumbImg"`
+		ThumbText    string     `json:"thumbText"`
+		EditionId    int        `json:"editionId"`
+		EditionYear  int        `json:"year"`
 	}
 
 	articles := []*articleResponseModel{}
@@ -96,12 +96,12 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 		Id           int        `json:"id"`
 		Title        string     `json:"title"`
 		Slug         string     `json:"slug"`
-		Writer       string     `json:"writer_name"`
-		PublisedDate *time.Time `json:"published_date"`
-		HeadlineImg  string     `json:"headline_img"`
+		Writer       string     `json:"writerName"`
+		PublisedDate *time.Time `json:"publishedAt"`
+		HeadlineImg  string     `json:"coverImg"`
 		Label        string     `json:"label"`
-		ContentJSON  string     `json:"content_json"`
-		AdsJSON      string     `json:"ads_json"`
+		ContentJSON  string     `json:"contents"`
+		AdsJSON      string     `json:"ads"`
 	}
 
 	var article articleResponseModel
@@ -109,7 +109,7 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 
 	err = c.db.QueryRow(
 		`
-		SELECT a.id, a.title, slug, w.writer_name, published_date, headline_img, c.label,
+		SELECT a.id, a.title, slug, w.writer_name, published_date, a.cover_img, c.label,
 		content_json, ads_json
 		FROM articles a
 		JOIN writers w ON w.id = a.writer_id
@@ -155,7 +155,7 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 	}
 
 	rows, err := c.db.Query(`
-		SELECT a.id, a.title, slug, w.writer_name, published_date, thumb_img, a.thumb_text, a.edition_id, e.edition_year
+		SELECT a.id, a.title, slug, w.writer_name, published_date, a.thumb_img, a.thumb_text, a.edition_id, e.edition_year
 		FROM articles as a
 		JOIN writers w ON w.id = a.writer_id
 		JOIN editions e ON e.id = a.edition_id
@@ -170,12 +170,12 @@ func (c *Controller) GetTopArticles(ctx *gin.Context) {
 		Id           int        `json:"id"`
 		Title        string     `json:"title"`
 		Slug         string     `json:"slug"`
-		Writer       string     `json:"writer_name"`
-		PublisedDate *time.Time `json:"published_date"`
-		ThumbImg     string     `json:"thumb_img"`
-		ThumbText    string     `json:"thumb_text"`
-		EditionId    int        `json:"edition_id"`
-		EditionYear  int        `json:"edition_year"`
+		Writer       string     `json:"writerName"`
+		PublisedDate *time.Time `json:"publishedAt"`
+		ThumbImg     string     `json:"thumbImg"`
+		ThumbText    string     `json:"thumbText"`
+		EditionId    int        `json:"editionId"`
+		EditionYear  int        `json:"year"`
 	}
 
 	articles := []*articleResponseModel{}
