@@ -1,4 +1,4 @@
-package controller
+package editor
 
 import (
 	"strconv"
@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
+func (c *EditorController) GetCategoriesByEdition(ctx *gin.Context) {
 	editionIdParam := ctx.Param("editionId")
 	editionId, err := strconv.Atoi(editionIdParam)
 	if err != nil {
@@ -46,7 +46,7 @@ func (c *Controller) GetCategoriesByEdition(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, categories)
 }
 
-func (c *Controller) GetCategoriesByArticle(ctx *gin.Context) {
+func (c *EditorController) GetCategoriesByArticle(ctx *gin.Context) {
 	articleIdParam := ctx.Param("articleId")
 	articleId, err := strconv.Atoi(articleIdParam)
 	if err != nil {

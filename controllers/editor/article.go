@@ -1,4 +1,4 @@
-package controller
+package editor
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
+func (c *EditorController) GetArticleById(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *Controller) CoreGetArticleById(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
 
-func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
+func (c *EditorController) GetArticleByEdition(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
@@ -128,7 +128,7 @@ func (c *Controller) CoreGetArticleByEdition(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"articles": articles})
 }
 
-func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
+func (c *EditorController) GetDrafts(ctx *gin.Context) {
 	type article struct {
 		Id                 *string    `json:"id"`
 		Title              *string    `json:"title"`
@@ -175,7 +175,7 @@ func (c *Controller) CoreGetDrafts(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"articles": articles})
 }
 
-func (c *Controller) CoreArchiveArticle(ctx *gin.Context) {
+func (c *EditorController) ArchiveArticle(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
@@ -209,7 +209,7 @@ func (c *Controller) CoreArchiveArticle(ctx *gin.Context) {
 	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
-func (c *Controller) CoreDeleteArticlePermanent(ctx *gin.Context) {
+func (c *EditorController) DeleteArticlePermanent(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
@@ -241,7 +241,7 @@ func (c *Controller) CoreDeleteArticlePermanent(ctx *gin.Context) {
 	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
-func (c *Controller) CorePublishArticle(ctx *gin.Context) {
+func (c *EditorController) PublishArticle(ctx *gin.Context) {
 	articleID := ctx.Param("articleId")
 	id, err := strconv.Atoi(articleID)
 	if err != nil {
@@ -274,7 +274,7 @@ func (c *Controller) CorePublishArticle(ctx *gin.Context) {
 	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
 
-func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
+func (c *EditorController) CreateArticle(ctx *gin.Context) {
 	type Request struct {
 		EditionId int `json:"editionId"`
 	}
@@ -309,7 +309,7 @@ func (c *Controller) CoreCreateArticle(ctx *gin.Context) {
 	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, nil, res)
 }
 
-func (c *Controller) CoreSaveDraft(ctx *gin.Context) {
+func (c *EditorController) SaveDraft(ctx *gin.Context) {
 	articleIdParam := ctx.Param("articleId")
 	articleId, err := strconv.Atoi(articleIdParam)
 	if err != nil {
@@ -358,7 +358,7 @@ func formatTitleToSlug(title string) string {
 	return slug
 }
 
-func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
+func (c *EditorController) SaveTWC(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
@@ -402,7 +402,7 @@ func (c *Controller) CoreSaveTWC(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, payload, res)
 }
 
-func (c *Controller) CoreGetArticleInfo(ctx *gin.Context) {
+func (c *EditorController) GetArticleInfo(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {
@@ -446,7 +446,7 @@ func (c *Controller) CoreGetArticleInfo(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
 
-func (c *Controller) CoreGetArticleContent(ctx *gin.Context) {
+func (c *EditorController) GetArticleContent(ctx *gin.Context) {
 	articleId := ctx.Param("articleId")
 	parsedArticleId, err := strconv.Atoi(articleId)
 	if err != nil {

@@ -1,4 +1,4 @@
-package controller
+package zaitun
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
+func (c *ZaitunController) GetArticlesByCategory(ctx *gin.Context) {
 	category := ctx.Query("category")
 	if category == "" {
 		c.res.AbortInvalidCategory(ctx, lib.ErrInvalidCategory, "missing required query (?category=)", nil)
@@ -76,7 +76,7 @@ func (c *Controller) GetArticlesByCategory(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, articles)
 }
 
-func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
+func (c *ZaitunController) GetArticleBySlug(ctx *gin.Context) {
 	year := ctx.Param("year")
 	editionId := ctx.Param("editionId")
 	slug := ctx.Param("slug")
@@ -142,7 +142,7 @@ func (c *Controller) GetArticleBySlug(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, article)
 }
 
-func (c *Controller) GetTopArticles(ctx *gin.Context) {
+func (c *ZaitunController) GetTopArticles(ctx *gin.Context) {
 	editionId := ctx.Query("editionId")
 	if editionId == "" {
 		c.res.AbortInvalidEdition(ctx, lib.ErrInvalidEdition, "missing required query (?editionId=)", nil)
