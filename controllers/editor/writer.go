@@ -1,4 +1,4 @@
-package controller
+package editor
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
+func (c *EditorController) GetAllWriters(ctx *gin.Context) {
 	type Writer struct {
 		Id         int    `json:"id"`
 		WriterName string `json:"writer_name"`
@@ -46,7 +46,7 @@ func (c *Controller) CoreGetAllWriters(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"writers": writers})
 }
 
-func (c *Controller) CoreCreateWriter(ctx *gin.Context) {
+func (c *EditorController) CreateWriter(ctx *gin.Context) {
 	if ctx.Request.Body == nil {
 		c.res.AbortInvalidRequestBody(ctx, lib.ErrInvalidBody, "missing request body", nil)
 		return

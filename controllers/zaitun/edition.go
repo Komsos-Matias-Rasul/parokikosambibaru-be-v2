@@ -1,4 +1,4 @@
-package controller
+package zaitun
 
 import (
 	"log"
@@ -18,7 +18,7 @@ type EditionResponseModel struct {
 	ThumbnailImg *string    `json:"thumbImg"`
 }
 
-func (c *Controller) GetAllEditions(ctx *gin.Context) {
+func (c *ZaitunController) GetAllEditions(ctx *gin.Context) {
 	editions := []*EditionResponseModel{}
 	rows, err := c.db.Query(`
 		SELECT id, title, published_at, edition_year, cover_img, thumb_img
@@ -49,7 +49,7 @@ func (c *Controller) GetAllEditions(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, editions)
 }
 
-func (c *Controller) GetEditionById(ctx *gin.Context) {
+func (c *ZaitunController) GetEditionById(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	_id, err := strconv.Atoi(editionId)
 	if err != nil {

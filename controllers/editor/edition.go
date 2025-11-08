@@ -1,4 +1,4 @@
-package controller
+package editor
 
 import (
 	"context"
@@ -11,7 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
+type EditionResponseModel struct {
+	Id           int        `json:"id"`
+	Title        string     `json:"title"`
+	PublishedAt  *time.Time `json:"publishedAt"`
+	EditionYear  *int       `json:"year"`
+	CoverImg     *string    `json:"coverImg"`
+	ThumbnailImg *string    `json:"thumbImg"`
+}
+
+func (c *EditorController) GetAllEditions(ctx *gin.Context) {
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
 	defer cancel()
 
@@ -67,7 +76,7 @@ func (c *Controller) CoreGetAllEditions(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, responseData)
 }
 
-func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
+func (c *EditorController) EditEditionInfo(ctx *gin.Context) {
 	type RequestPayload struct {
 		Title string `json:"title"`
 		Year  int    `json:"year"`
@@ -111,7 +120,7 @@ func (c *Controller) CoreEditEditionInfo(ctx *gin.Context) {
 	)
 }
 
-func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
+func (c *EditorController) GetEditionInfo(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
@@ -162,7 +171,7 @@ func (c *Controller) CoreGetEditionInfo(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, nil, edition)
 }
 
-func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
+func (c *EditorController) CreateEdition(ctx *gin.Context) {
 
 	type ReqBody struct {
 		Title string `json:"title"`
@@ -210,7 +219,7 @@ func (c *Controller) CoreCreateEdition(ctx *gin.Context) {
 	)
 }
 
-func (c *Controller) CorePublishEdition(ctx *gin.Context) {
+func (c *EditorController) PublishEdition(ctx *gin.Context) {
 	editionId := ctx.Param("editionId")
 	parsedEditionId, err := strconv.Atoi(editionId)
 	if err != nil {
