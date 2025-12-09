@@ -105,6 +105,12 @@ func (r *Responses) AbortInvalidYear(ctx *gin.Context, err error,
 		details, http.StatusBadRequest, reqData)
 }
 
+func (r *Responses) AbortInvalidBerita(ctx *gin.Context, err error,
+	details string, reqData any) {
+	r.AbortWithStatusJSON(ctx, err, ErrInvalidBerita.Error(),
+		details, http.StatusBadRequest, reqData)
+}
+
 func (r *Responses) AbortInvalidRequestBody(ctx *gin.Context, err error,
 	details string, reqData any) {
 	r.AbortWithStatusJSON(ctx, err, ErrInvalidBody.Error(),

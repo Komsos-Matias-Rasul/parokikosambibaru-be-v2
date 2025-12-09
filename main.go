@@ -25,7 +25,12 @@ func corsMiddleware() gin.HandlerFunc {
 
 func main() {
 
-	gin.SetMode(gin.DebugMode)
+	if conf.ENV == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	if conf.ENV == "development" {
+		gin.SetMode(gin.DebugMode)
+	}
 	app := gin.Default()
 	app.Use(corsMiddleware())
 	db := lib.GetDB()
@@ -34,6 +39,24 @@ func main() {
 	c := controllers.NewController(db)
 
 	app.GET("/ping", c.Ping)
+
+	/*
+		*
+		*
+			PROFILE API ROUTES
+			---
+	*/
+	app.GET("/api/berita", c.Profile.GetAllBerita)
+	app.GET("/api/berita/:beritaId", c.Profile.GetBeritaById)
+
+	/*
+		*
+		*
+			PROFILE ADMIN API ROUTES
+			---
+	*/
+	app.GET("/api/core/berita", c.Editor.GetAllBerita)
+	app.POST("/api/core/berita", c.Editor.CreateBerita)
 
 	/*
 		*

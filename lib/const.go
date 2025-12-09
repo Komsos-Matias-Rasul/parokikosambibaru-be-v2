@@ -9,6 +9,7 @@ var ErrInvalidCategory error = errors.New("invalid category id")
 var ErrInvalidEdition error = errors.New("invalid edition id")
 var ErrInvalidYear error = errors.New("invalid year")
 var ErrInvalidBody error = errors.New("invalid request body")
+var ErrInvalidBerita error = errors.New("invalid berita id")
 
 var ErrDatabase error = errors.New("mysql: database error")
 var ErrTimeout error = errors.New("mysql: connection timeout")
