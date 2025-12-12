@@ -87,6 +87,12 @@ func (r *Responses) AbortInvalidArticle(ctx *gin.Context, err error,
 		details, http.StatusBadRequest, reqData)
 }
 
+func (r *Responses) AbortInvalidBerita(ctx * gin.Context, err error,
+	details string, reqData any) {
+	r.AbortWithStatusJSON(ctx, err, ErrInvalidArticle.Error(),
+		details, http.StatusBadRequest, reqData)
+}
+
 func (r *Responses) AbortInvalidEdition(ctx *gin.Context, err error,
 	details string, reqData any) {
 	r.AbortWithStatusJSON(ctx, err, ErrInvalidEdition.Error(),
@@ -102,12 +108,6 @@ func (r *Responses) AbortInvalidCategory(ctx *gin.Context, err error,
 func (r *Responses) AbortInvalidYear(ctx *gin.Context, err error,
 	details string, reqData any) {
 	r.AbortWithStatusJSON(ctx, err, ErrInvalidYear.Error(),
-		details, http.StatusBadRequest, reqData)
-}
-
-func (r *Responses) AbortInvalidBerita(ctx *gin.Context, err error,
-	details string, reqData any) {
-	r.AbortWithStatusJSON(ctx, err, ErrInvalidBerita.Error(),
 		details, http.StatusBadRequest, reqData)
 }
 
