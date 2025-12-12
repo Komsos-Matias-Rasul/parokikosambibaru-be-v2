@@ -55,7 +55,6 @@ func main() {
 			PROFILE ADMIN API ROUTES
 			---
 	*/
-	app.GET("/api/core/berita", c.Editor.GetAllBerita)
 	app.POST("/api/core/berita", c.Editor.CreateBerita)
 
 	/*
@@ -113,6 +112,13 @@ func main() {
 
 	app.GET("/api/core/writers", c.Editor.GetAllWriters)
 	app.POST("/api/core/writer", c.Editor.CreateWriter)
+
+	app.GET("/api/core/beritas", c.Editor.GetAllBerita)	
+	app.POST("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
+	app.POST("api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
+	app.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
+	
+
 
 	/*
 		*

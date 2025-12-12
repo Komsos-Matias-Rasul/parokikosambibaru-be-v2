@@ -5,6 +5,10 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strconv"
+	"errors"
+	"strings"
+	
 
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
@@ -129,3 +133,161 @@ func (c *EditorController) CreateBerita(ctx *gin.Context) {
 	res := gin.H{"message": "article created successfully", "berita_id": beritaId}
 	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, nil, res)
 }
+
+func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context){
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+    defer cancel()
+	id := ctx.Param("id")
+	parsedBeritaId, err := strconv.Atoi(id)
+	if(err != nil){
+		c.res.AbortInvalidBerita(ctx, err, err.Error(), nil)
+		return
+	}
+
+	type Request struct {
+		FileName string `json:"fileName"`
+	}
+	var payload Request
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+		return
+	}
+	if strings.TrimSpace(payload.FileName) == "" {
+		c.res.AbortInvalidRequestBody(
+			ctx,
+			errors.New("empty filename"),
+			"empty filename",
+			nil,
+		)
+		return
+	}
+
+
+	if _, err := c.db.ExecContext(_context, `
+		UPDATE announcements
+		SET thumb_img = ?
+		WHERE id = ?`, payload.FileName, parsedBeritaId); err != nil {
+		
+	}
+
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, payload)
+		return
+	}
+
+	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{
+		"message": "thumbnail updated successfully",
+	})
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+}
+
+func (c *EditorController) UpdateBeritaPublishing(ctx *gin.Context){
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+    defer cancel()
+	beritaId := ctx.Param("id")
+	if beritaId == ""{
+		c.res.AbortInvalidRequestBody(ctx, nil, "berita id is required", nil)
+		return
+	} 
+
+	type RequestModel struct{
+		PublishStart string `json:"publishStart" binding:"required"`
+		PublishEnd   string `json:"publishEnd" binding:"required"`
+	}
+
+	var payload RequestModel
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+        return
+	}
+
+	pubStart, err := time.Parse(time.RFC3339, payload.PublishStart)
+    if err != nil {
+        c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishStart format (use ISO 8601)", nil)
+        return
+    }
+    pubEnd, err := time.Parse(time.RFC3339, payload.PublishEnd)
+    if err != nil {
+        c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishEnd format (use ISO 8601)", nil)
+        return
+    }
+
+
+
+	query := `UPDATE announcements SET publish_start = ?, publish_end = ? WHERE id = ?`
+    
+    result, err := c.db.ExecContext(_context, query, pubStart, pubEnd, beritaId)
+    
+    if _context.Err() == context.DeadlineExceeded {
+        c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
+        return
+    }
+    if err != nil {
+        c.res.AbortDatabaseError(ctx, err, nil)
+        return
+    }
+
+    rowsAffected, _ := result.RowsAffected()
+    if rowsAffected == 0 {
+        c.res.AbortDatabaseError(ctx, nil, "Berita not found")
+        return
+    }
+
+	responsePayload := gin.H{
+        "_id": beritaId,
+        "data": gin.H{
+            "message": "publishing period updated successfully",
+        },
+        "timestamp": time.Now().UTC().Unix(),
+    }
+
+    c.res.SuccessWithStatusJSON(ctx, http.StatusOK, nil, responsePayload)
+}
+
+
+func (c *EditorController) DeleteBeritaPermanent(ctx *gin.Context) {
+	beritaid := ctx.Param("id")
+	id, err := strconv.Atoi(beritaid)
+	if err != nil {
+		c.res.AbortInvalidBerita(ctx, err, err.Error(), nil)
+		return
+	}
+	var exists bool
+	err = c.db.QueryRow("SELECT EXISTS(SELECT 1 FROM announcements WHERE id = ?)", id).Scan(&exists)
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+	if !exists {
+		c.res.AbortArticleNotFound(ctx, err, "", nil)
+		return
+	}
+
+	_, err = c.db.Exec(`
+		DELETE FROM announcements
+		WHERE id = ?`,
+		id,
+	)
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	res := gin.H{"message": "berita deleted successfully"}
+	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
+}
+	
