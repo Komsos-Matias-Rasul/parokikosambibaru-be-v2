@@ -6,6 +6,7 @@ import (
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/conf"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -113,12 +114,10 @@ func main() {
 	app.GET("/api/core/writers", c.Editor.GetAllWriters)
 	app.POST("/api/core/writer", c.Editor.CreateWriter)
 
-	app.GET("/api/core/beritas", c.Editor.GetAllBerita)	
-	app.POST("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
+	app.GET("/api/core/beritas", c.Editor.GetAllBerita)
+	app.PUT("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
 	app.POST("api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
 	app.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
-	
-
 
 	/*
 		*
@@ -127,6 +126,10 @@ func main() {
 			---
 	*/
 	// app.GET("/api/ads/:year/:fileName", c.GetAdImage)
+	app.GET("/api/internal", func(ctx *gin.Context) {
+		storage, _ := lib.GetCloudStorage(ctx.Request.Context())
+		services.RefreshCORS(ctx.Request.Context(), storage.StorageBucket)
+	})
 
 	app.Run(fmt.Sprintf("0.0.0.0:%d", conf.SERVER_PORT))
 }

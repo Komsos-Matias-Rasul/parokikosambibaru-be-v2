@@ -10,28 +10,6 @@ import (
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 )
 
-func UploadImage(ctx context.Context, destination string, contentType string) (*string, error) {
-	client, err := lib.GetCloudStorage(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer client.CloudStorageClient.Close()
-
-	opt := &storage.SignedURLOptions{
-		Scheme: storage.SigningSchemeV4,
-		Method: http.MethodPut,
-		Headers: []string{
-			fmt.Sprintf("Content-Type:%s", contentType),
-		},
-		Expires: time.Now().Add(time.Minute * 3),
-	}
-	signedUrl, err := client.StorageBucket.SignedURL(destination, opt)
-	if err != nil {
-		return nil, err
-	}
-	return &signedUrl, nil
-}
-
 func GetSignedURL(ctx context.Context, destination string, contentType string) (string, error) {
 	client, err := lib.GetCloudStorage(ctx)
 	if err != nil {
@@ -54,7 +32,7 @@ func GetSignedURL(ctx context.Context, destination string, contentType string) (
 	return signedUrl, nil
 }
 
-func refreshCORS(ctx context.Context, bkt *storage.BucketHandle) error {
+func RefreshCORS(ctx context.Context, bkt *storage.BucketHandle) error {
 	_attr := storage.BucketAttrsToUpdate{
 		CORS: []storage.CORS{{
 			Methods:         []string{http.MethodOptions, http.MethodPut},

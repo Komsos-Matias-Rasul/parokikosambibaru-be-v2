@@ -2,15 +2,16 @@ package editor
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"time"
 	"strconv"
-	"errors"
 	"strings"
-	
+	"time"
 
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -78,10 +79,12 @@ func (c *EditorController) CreateBerita(ctx *gin.Context) {
 	type RequestModel struct {
 		Title        string `json:"title" binding:"required"`
 		Section      string `json:"section" binding:"required"`
-		Desc         string `json:"description" binding:"required"`
+		Desc         string `json:"descriptions" binding:"required"`
 		Details      string `json:"details" binding:"required"`
 		PublishStart string `json:"publishStart" binding:"required"`
 		PublishEnd   string `json:"publishEnd" binding:"required"`
+		FileName     string `json:"thumbImg" binding:"required"`
+		ContentType  string `json:"contentType" binding:"required"`
 	}
 
 	var payload RequestModel
@@ -130,16 +133,27 @@ func (c *EditorController) CreateBerita(ctx *gin.Context) {
 		return
 	}
 
-	res := gin.H{"message": "article created successfully", "berita_id": beritaId}
+	obj := fmt.Sprintf("berita/%d/%s", beritaId, payload.FileName)
+
+	signedUrl, err := services.GetSignedURL(_context, obj, payload.ContentType)
+	if err != nil {
+		c.res.AbortStorageError(ctx, err, payload)
+		return
+	}
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), payload)
+		return
+	}
+	res := gin.H{"message": "berita created successfully", "url": signedUrl, "location": obj, "beritaId": beritaId}
 	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, nil, res)
 }
 
-func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context){
+func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context) {
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
-    defer cancel()
+	defer cancel()
 	id := ctx.Param("id")
 	parsedBeritaId, err := strconv.Atoi(id)
-	if(err != nil){
+	if err != nil {
 		c.res.AbortInvalidBerita(ctx, err, err.Error(), nil)
 		return
 	}
@@ -162,12 +176,12 @@ func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context){
 		return
 	}
 
-
 	if _, err := c.db.ExecContext(_context, `
 		UPDATE announcements
 		SET thumb_img = ?
 		WHERE id = ?`, payload.FileName, parsedBeritaId); err != nil {
-		
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
 	}
 
 	if _context.Err() == context.DeadlineExceeded {
@@ -178,33 +192,19 @@ func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context){
 	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{
 		"message": "thumbnail updated successfully",
 	})
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 }
 
-func (c *EditorController) UpdateBeritaPublishing(ctx *gin.Context){
+func (c *EditorController) UpdateBeritaPublishing(ctx *gin.Context) {
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
-    defer cancel()
+	defer cancel()
 	beritaId := ctx.Param("id")
-	if beritaId == ""{
+	if beritaId == "" {
 		c.res.AbortInvalidRequestBody(ctx, nil, "berita id is required", nil)
 		return
-	} 
+	}
 
-	type RequestModel struct{
+	type RequestModel struct {
 		PublishStart string `json:"publishStart" binding:"required"`
 		PublishEnd   string `json:"publishEnd" binding:"required"`
 	}
@@ -212,52 +212,49 @@ func (c *EditorController) UpdateBeritaPublishing(ctx *gin.Context){
 	var payload RequestModel
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
-        return
+		return
 	}
 
 	pubStart, err := time.Parse(time.RFC3339, payload.PublishStart)
-    if err != nil {
-        c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishStart format (use ISO 8601)", nil)
-        return
-    }
-    pubEnd, err := time.Parse(time.RFC3339, payload.PublishEnd)
-    if err != nil {
-        c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishEnd format (use ISO 8601)", nil)
-        return
-    }
-
-
+	if err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishStart format (use ISO 8601)", nil)
+		return
+	}
+	pubEnd, err := time.Parse(time.RFC3339, payload.PublishEnd)
+	if err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, "Invalid publishEnd format (use ISO 8601)", nil)
+		return
+	}
 
 	query := `UPDATE announcements SET publish_start = ?, publish_end = ? WHERE id = ?`
-    
-    result, err := c.db.ExecContext(_context, query, pubStart, pubEnd, beritaId)
-    
-    if _context.Err() == context.DeadlineExceeded {
-        c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
-        return
-    }
-    if err != nil {
-        c.res.AbortDatabaseError(ctx, err, nil)
-        return
-    }
 
-    rowsAffected, _ := result.RowsAffected()
-    if rowsAffected == 0 {
-        c.res.AbortDatabaseError(ctx, nil, "Berita not found")
-        return
-    }
+	result, err := c.db.ExecContext(_context, query, pubStart, pubEnd, beritaId)
+
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, nil)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.res.AbortDatabaseError(ctx, nil, "Berita not found")
+		return
+	}
 
 	responsePayload := gin.H{
-        "_id": beritaId,
-        "data": gin.H{
-            "message": "publishing period updated successfully",
-        },
-        "timestamp": time.Now().UTC().Unix(),
-    }
+		"_id": beritaId,
+		"data": gin.H{
+			"message": "publishing period updated successfully",
+		},
+		"timestamp": time.Now().UTC().Unix(),
+	}
 
-    c.res.SuccessWithStatusJSON(ctx, http.StatusOK, nil, responsePayload)
+	c.res.SuccessWithStatusJSON(ctx, http.StatusOK, nil, responsePayload)
 }
-
 
 func (c *EditorController) DeleteBeritaPermanent(ctx *gin.Context) {
 	beritaid := ctx.Param("id")
@@ -290,4 +287,3 @@ func (c *EditorController) DeleteBeritaPermanent(ctx *gin.Context) {
 	res := gin.H{"message": "berita deleted successfully"}
 	c.res.SuccessWithStatusJSON(ctx, http.StatusAccepted, nil, res)
 }
-	
