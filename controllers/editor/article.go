@@ -288,10 +288,11 @@ func (c *EditorController) CreateArticle(ctx *gin.Context) {
 	const UNKNOWN_WRITER = 1
 	now := time.Now().UTC()
 	imgPath := "/static/placeholder.jpg"
+	adsStr := `{"side":[],"below":""}`
 	article, err := c.db.Exec(`
-		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, cover_img, thumb_img)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, payload.EditionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath)
+		INSERT INTO articles (edition_id, title, category_id, writer_id, created_at, updated_at, cover_img, thumb_img, ads_json)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, payload.EditionId, "Untitled Article", UNCATEGORIZED, UNKNOWN_WRITER, now, now, imgPath, imgPath, adsStr)
 
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
@@ -318,7 +319,8 @@ func (c *EditorController) SaveDraft(ctx *gin.Context) {
 	}
 
 	type SaveDraftPayload struct {
-		Contents json.RawMessage `json:"contents"`
+		Contents  json.RawMessage `json:"contents"`
+		ThumbText string          `json:"thumbText"`
 	}
 	var payload SaveDraftPayload
 	if err := ctx.BindJSON(&payload); err != nil {
@@ -330,9 +332,9 @@ func (c *EditorController) SaveDraft(ctx *gin.Context) {
 
 	_, err = c.db.Exec(`
         UPDATE articles
-        SET content_json = ?, updated_at = ?
+        SET content_json = ?, thumb_text = ?, updated_at = ?
         WHERE id = ?
-    `, string(payload.Contents), now, articleId)
+    `, string(payload.Contents), payload.ThumbText, now, articleId)
 	if err != nil {
 		c.res.AbortDatabaseError(ctx, err, nil)
 		return
