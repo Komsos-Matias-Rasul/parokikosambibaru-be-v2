@@ -1,7 +1,9 @@
 package editor
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/conf"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/services"
 	"github.com/gin-gonic/gin"
@@ -149,7 +152,7 @@ func (c *EditorController) CreateBerita(ctx *gin.Context) {
 }
 
 func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context) {
-	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
+	_context, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	id := ctx.Param("id")
 	parsedBeritaId, err := strconv.Atoi(id)
@@ -159,19 +162,63 @@ func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context) {
 	}
 
 	type Request struct {
-		FileName string `json:"fileName"`
+		ObjPath string `json:"objPath"`
 	}
 	var payload Request
 	if err := ctx.BindJSON(&payload); err != nil {
 		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
 		return
 	}
-	if strings.TrimSpace(payload.FileName) == "" {
+	if strings.TrimSpace(payload.ObjPath) == "" {
 		c.res.AbortInvalidRequestBody(
 			ctx,
-			errors.New("empty filename"),
-			"empty filename",
+			errors.New("empty object path"),
+			"empty object path",
 			nil,
+		)
+		return
+	}
+
+	type CompressRequest struct {
+		Path          string `json:"path"`
+		BucketName    string `json:"bucketName"`
+		TargetType    string `json:"targetType"`
+		TargetQuality int    `json:"targetQuality"`
+	}
+
+	body := CompressRequest{
+		Path:          payload.ObjPath,
+		BucketName:    conf.GCLOUD_BUCKET,
+		TargetType:    "webp",
+		TargetQuality: 80,
+	}
+	bBody, err := json.Marshal(body)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to call image compression API",
+			err.Error(), http.StatusInternalServerError, body,
+		)
+		return
+	}
+	bodyReader := bytes.NewReader(bBody)
+	resp, err := http.Post(conf.COMPRESS_FUNCTION_URL, "application/json", bodyReader)
+	if err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to call image compression API",
+			err.Error(), http.StatusInternalServerError, body,
+		)
+		return
+	}
+	defer resp.Body.Close()
+
+	type CompressResponse struct {
+		Url string `json:"url"`
+	}
+	var comp CompressResponse
+	if err = json.NewDecoder(resp.Body).Decode(&comp); err != nil {
+		c.res.AbortWithStatusJSON(
+			ctx, err, "failed to read compress API response",
+			err.Error(), http.StatusInternalServerError, body,
 		)
 		return
 	}
@@ -179,7 +226,7 @@ func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context) {
 	if _, err := c.db.ExecContext(_context, `
 		UPDATE announcements
 		SET thumb_img = ?
-		WHERE id = ?`, payload.FileName, parsedBeritaId); err != nil {
+		WHERE id = ?`, comp.Url, parsedBeritaId); err != nil {
 		c.res.AbortDatabaseError(ctx, err, payload)
 		return
 	}
@@ -192,7 +239,6 @@ func (c *EditorController) UpdateBeritaThumbnail(ctx *gin.Context) {
 	c.res.SuccessWithStatusOKJSON(ctx, payload, gin.H{
 		"message": "thumbnail updated successfully",
 	})
-
 }
 
 func (c *EditorController) UpdateBeritaPublishing(ctx *gin.Context) {
