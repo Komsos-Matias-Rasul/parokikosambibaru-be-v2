@@ -49,6 +49,7 @@ func main() {
 	*/
 	app.GET("/api/berita", c.Profile.GetAllBerita)
 	app.GET("/api/berita/:beritaId", c.Profile.GetBeritaById)
+	app.GET("/api/umkm", c.UMKM.GetToko)
 
 	/*
 		*

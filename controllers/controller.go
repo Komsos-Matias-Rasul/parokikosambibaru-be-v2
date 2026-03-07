@@ -10,6 +10,7 @@ import (
 	e "github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/editor"
 	i "github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/image"
 	p "github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/profile"
+	umkm "github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/umkm"
 	z "github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/zaitun"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ type Controller struct {
 	Editor  *e.EditorController
 	Image   *i.ImageController
 	Auth    *a.AuthController
+	UMKM    *umkm.UMKMController
 }
 
 func NewController(db *sql.DB) *Controller {
@@ -33,6 +35,7 @@ func NewController(db *sql.DB) *Controller {
 	editor := e.NewEditorController(db, res)
 	image := i.NewImageController(db, res)
 	auth := a.NewAuthController(db, res)
+	umkm := umkm.NewUMKMController(db, res)
 	return &Controller{
 		db,
 		res,
@@ -41,6 +44,7 @@ func NewController(db *sql.DB) *Controller {
 		editor,
 		image,
 		auth,
+		umkm,
 	}
 }
 
