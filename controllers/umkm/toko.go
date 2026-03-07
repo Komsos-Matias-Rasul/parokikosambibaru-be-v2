@@ -2,13 +2,34 @@ package umkm
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+func filterTokoByKategoriQuery(q string, kategori int) string {
+	return fmt.Sprintf("%s WHERE kategori = %d", q, kategori)
+}
+
+func searchTokoQuery(q string, search string) string {
+	return fmt.Sprintf("%s AND nama LIKE '%s'", q, search)
+}
+
+func sortTokoQuery(q string, sort string) string {
+	if sort == "Z-A" {
+		return fmt.Sprintf("%s ORDER BY nama DESC", q)
+	}
+	return fmt.Sprintf("%s ORDER BY nama ASC", q)
+}
+
 func (c *UMKMController) GetToko(ctx *gin.Context) {
+
+	filter := ctx.Query("filter")
+	search := ctx.Query("search")
+	sort := ctx.Query("sort")
 
 	type Toko struct {
 		ID              *int    `json:"id"`
@@ -28,6 +49,15 @@ func (c *UMKMController) GetToko(ctx *gin.Context) {
 
 	q := `SELECT id, nama, logo, kategori, jenis_produk, alamat, kontak_whatsapp,
 		kontak_instagram, kontak_facebook, kontak_telepon FROM umkm_toko`
+
+	if filter != "" {
+		kategori, _ := strconv.Atoi(filter)
+		q = filterTokoByKategoriQuery(q, kategori)
+	}
+	if search != "" {
+		q = searchTokoQuery(q, search)
+	}
+	q = sortTokoQuery(q, sort)
 	tokoRows, err := c.db.QueryContext(_context, q)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
