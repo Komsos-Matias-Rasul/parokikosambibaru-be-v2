@@ -49,7 +49,9 @@ func main() {
 	*/
 	app.GET("/api/berita", c.Profile.GetAllBerita)
 	app.GET("/api/berita/:beritaId", c.Profile.GetBeritaById)
-	app.GET("/api/umkm", c.UMKM.GetToko)
+	app.GET("/api/umkm/toko", c.UMKM.GetToko)
+	app.GET("/api/umkm/products", c.UMKM.GetProduct)
+	app.GET("/api/umkm/products/rand", c.UMKM.GetRandomProduct)
 
 	/*
 		*
