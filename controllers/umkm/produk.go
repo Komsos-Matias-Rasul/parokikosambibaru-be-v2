@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
+	"database/sql"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,8 +58,14 @@ func sortProdukQuery(q string, sort string) string {
 	return fmt.Sprintf("%s ORDER BY up.nama ASC", q)
 }
 
-func searchProdukQuery(q string) string {
-	return fmt.Sprint(q, " WHERE up.nama LIKE '%?%'")
+func searchProdukQuery(q string, search string) (string, string) {
+	if search == "" {
+		return q, ""
+	}
+	if strings.Contains(q, "WHERE") {
+		return fmt.Sprintf("%s AND up.nama LIKE ?", q), "%" + search + "%"
+	}
+	return fmt.Sprintf("%s WHERE up.nama LIKE ?", q), "%" + search + "%"
 }
 
 func filterProductQuery(q string, category string) string {
@@ -83,8 +91,6 @@ func filterProductQuery(q string, category string) string {
 }
 
 func (c *UMKMController) GetProduct(ctx *gin.Context) {
-
-	// search := ctx.Query("search")
 	sort := ctx.Query("sort")
 	if sort == "" {
 		e := errors.New("invalid sort")
@@ -94,6 +100,8 @@ func (c *UMKMController) GetProduct(ctx *gin.Context) {
 
 	page := ctx.Query("page")
 	category := ctx.Query("category")
+	search := ctx.Query("q") 
+
 	if category == "" {
 		e := errors.New("invalid category")
 		c.res.AbortWithStatusJSON(ctx, e, "invalid category", e.Error(), http.StatusBadRequest, nil)
@@ -130,13 +138,18 @@ func (c *UMKMController) GetProduct(ctx *gin.Context) {
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 20*time.Second)
 	defer cancel()
 
-	q := `SELECT count(up.id) from umkm_products up 
-	JOIN umkm_toko ut ON up.id_toko = ut.id`
-
-	q = filterProductQuery(q, category)
+	
+	qCount := `SELECT count(up.id) FROM umkm_products up 
+        JOIN umkm_toko ut ON up.id_toko = ut.id`
+	qCount = filterProductQuery(qCount, category)
+	qCount, searchArg := searchProdukQuery(qCount, search)
 
 	var ctr int
-	err = c.db.QueryRowContext(_context, q).Scan(&ctr)
+	if searchArg != "" {
+		err = c.db.QueryRowContext(_context, qCount, searchArg).Scan(&ctr)
+	} else {
+		err = c.db.QueryRowContext(_context, qCount).Scan(&ctr)
+	}
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
@@ -146,16 +159,19 @@ func (c *UMKMController) GetProduct(ctx *gin.Context) {
 		return
 	}
 
-	q = `
-		SELECT up.id, up.nama, up.foto, up.harga, ut.nama, ut.kategori FROM umkm_products up 
-		JOIN umkm_toko ut ON up.id_toko = ut.id`
-
-	// q = searchProdukQuery(q)
+	q := `SELECT up.id, up.nama, up.foto, up.harga, ut.nama, ut.kategori FROM umkm_products up 
+        JOIN umkm_toko ut ON up.id_toko = ut.id`
 	q = filterProductQuery(q, category)
+	q, searchArg = searchProdukQuery(q, search)
 	q = sortProdukQuery(q, sort)
 	q = fmt.Sprintf("%s LIMIT 20 OFFSET %d", q, (currPage-1)*20)
 
-	produkRows, err := c.db.QueryContext(_context, q)
+	var produkRows *sql.Rows
+	if searchArg != "" {
+		produkRows, err = c.db.QueryContext(_context, q, searchArg)
+	} else {
+		produkRows, err = c.db.QueryContext(_context, q)
+	}
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)
 		return
@@ -168,18 +184,14 @@ func (c *UMKMController) GetProduct(ctx *gin.Context) {
 	listProduk := []*Product{}
 	for produkRows.Next() {
 		var produk Product
-		var c int
+		var cat int
 		if err := produkRows.Scan(
-			&produk.ID,
-			&produk.Name,
-			&produk.Img,
-			&produk.Price,
-			&produk.StoreName,
-			&c,
+			&produk.ID, &produk.Name, &produk.Img,
+			&produk.Price, &produk.StoreName, &cat,
 		); err != nil {
 			log.Println(err.Error())
 		}
-		produk.Category = STORE_CATEGORY_MAPPING[c]
+		produk.Category = STORE_CATEGORY_MAPPING[cat]
 		listProduk = append(listProduk, &produk)
 	}
 
