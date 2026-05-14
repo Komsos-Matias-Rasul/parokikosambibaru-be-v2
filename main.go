@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/auth"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/conf"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
@@ -125,6 +127,29 @@ func main() {
 	app.PUT("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
 	app.POST("api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
 	app.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
+
+	app.POST("/api/core/auth/login", c.Auth.Login) 
+
+
+	protected := app.Group("/api/core")
+
+	protected.Use(auth.AuthMiddleware()) 
+	{
+		protected.PUT("/api/core/articles/:articleId/save-info", c.Editor.SaveTWC)
+		protected.PUT("/api/core/articles/:articleId/save-draft", c.Editor.SaveDraft)
+		protected.PUT("/api/core/articles/:articleId/publish", c.Editor.PublishArticle)
+		protected.PUT("/api/core/articles/:articleId/archive", c.Editor.ArchiveArticle)
+		protected.DELETE("/api/core/articles/:articleId", c.Editor.DeleteArticlePermanent)
+
+		protected.POST("/api/core/articles/:articleId/cover", c.Image.SaveArticleCover)
+		protected.POST("/api/core/articles/:articleId/images", c.Image.SaveArticleImageContents)
+		protected.PUT("/api/core/articles/:articleId/cover/rename", c.Image.RenameArticleHeadline)
+		protected.PUT("/api/core/articles/:articleId/cover/thumbnail", c.Image.UpdateArticleThumbnail)
+
+		protected.POST("/api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
+		protected.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
+		protected.PUT("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
+	}
 
 	/*
 		*
