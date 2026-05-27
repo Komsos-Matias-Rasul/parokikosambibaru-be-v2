@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 
-
-	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/auth"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/conf"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers"
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/controllers/auth"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/services"
 	"github.com/gin-gonic/gin"
@@ -119,6 +118,7 @@ func main() {
 
 	app.GET("/api/core/categories/by-edition/:editionId", c.Editor.GetCategoriesByEdition)
 	app.GET("/api/core/categories/by-article/:articleId", c.Editor.GetCategoriesByArticle)
+	app.POST("/api/core/category", c.Editor.CreateCategory)
 
 	app.GET("/api/core/writers", c.Editor.GetAllWriters)
 	app.POST("/api/core/writer", c.Editor.CreateWriter)
@@ -128,12 +128,11 @@ func main() {
 	app.POST("api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
 	app.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
 
-	app.POST("/api/core/auth/login", c.Auth.Login) 
-
+	app.POST("/api/core/auth/login", c.Auth.Login)
 
 	protected := app.Group("/api/core")
 
-	protected.Use(auth.AuthMiddleware()) 
+	protected.Use(auth.AuthMiddleware())
 	{
 		protected.PUT("/api/core/articles/:articleId/save-info", c.Editor.SaveTWC)
 		protected.PUT("/api/core/articles/:articleId/save-draft", c.Editor.SaveDraft)

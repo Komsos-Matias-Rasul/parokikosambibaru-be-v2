@@ -417,6 +417,7 @@ func (c *EditorController) GetArticleInfo(ctx *gin.Context) {
 		Title      *string `json:"title"`
 		WriterId   *int    `json:"writerId"`
 		CategoryId *int    `json:"categoryId"`
+		EditionId  *int    `json:"editionId"`
 	}
 
 	_context, cancel := context.WithTimeout(ctx.Request.Context(), 10*time.Second)
@@ -424,13 +425,14 @@ func (c *EditorController) GetArticleInfo(ctx *gin.Context) {
 
 	var article Article
 	err = c.db.QueryRowContext(_context, `
-		SELECT id, title, writer_id, category_id
+		SELECT id, title, writer_id, category_id, edition_id
 		FROM articles
     WHERE id = ?`, parsedArticleId).Scan(
 		&article.Id,
 		&article.Title,
 		&article.WriterId,
 		&article.CategoryId,
+		&article.EditionId,
 	)
 	if _context.Err() == context.DeadlineExceeded {
 		c.res.AbortDatabaseTimeout(ctx, _context.Err(), nil)

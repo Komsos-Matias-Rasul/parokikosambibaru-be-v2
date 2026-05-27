@@ -1,8 +1,14 @@
 package editor
 
 import (
+	"context"
+	"errors"
+	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/Komsos-Matias-Rasul/parokikosambibaru-be-v2/lib"
 	"github.com/gin-gonic/gin"
 )
 
@@ -80,4 +86,52 @@ func (c *EditorController) GetCategoriesByArticle(ctx *gin.Context) {
 	}
 
 	c.res.SuccessWithStatusOKJSON(ctx, nil, gin.H{"categories": categories})
+}
+
+func (c *EditorController) CreateCategory(ctx *gin.Context) {
+	if ctx.Request.Body == nil {
+		c.res.AbortInvalidRequestBody(ctx, lib.ErrInvalidBody, "missing request body", nil)
+		return
+	}
+
+	type reqBody struct {
+		Category  string `json:"category"`
+		EditionId int    `json:"editionId"`
+	}
+
+	var payload reqBody
+	if err := ctx.BindJSON(&payload); err != nil {
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), nil)
+		return
+	}
+
+	if len(strings.TrimSpace(payload.Category)) == 0 {
+		err := errors.New("missing category name")
+		c.res.AbortInvalidRequestBody(ctx, err, err.Error(), payload)
+		return
+	}
+
+	if payload.EditionId == 0 {
+		c.res.AbortInvalidEdition(ctx, lib.ErrEditionNotFound, "invalid edition", payload)
+		return
+	}
+
+	_context, cancel := context.WithTimeout(ctx.Request.Context(), time.Second*10)
+	defer cancel()
+
+	// construct key
+	ck := strings.ReplaceAll(strings.ToLower(payload.Category), " ", "_")
+
+	_, err := c.db.ExecContext(_context, "INSERT INTO categories (label, `key`, edition_id, `order`) VALUES (?, ?, ?, ?)",
+		payload.Category, ck, payload.EditionId, 0)
+	if _context.Err() == context.DeadlineExceeded {
+		c.res.AbortDatabaseTimeout(ctx, err, payload)
+		return
+	}
+	if err != nil {
+		c.res.AbortDatabaseError(ctx, err, payload)
+		return
+	}
+
+	c.res.SuccessWithStatusJSON(ctx, http.StatusCreated, payload, gin.H{"message": "category created successfully"})
 }
