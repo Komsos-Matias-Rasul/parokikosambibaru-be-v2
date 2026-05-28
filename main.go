@@ -117,8 +117,10 @@ func main() {
 	app.GET("/api/core/drafts", c.Editor.GetDrafts)
 
 	app.GET("/api/core/categories/by-edition/:editionId", c.Editor.GetCategoriesByEdition)
+	app.GET("/api/core/categories/by-edition/:editionId/active", c.Editor.GetNonNullCategoriesByEdition)
 	app.GET("/api/core/categories/by-article/:articleId", c.Editor.GetCategoriesByArticle)
 	app.POST("/api/core/category", c.Editor.CreateCategory)
+	app.PUT("/api/core/category", c.Editor.UpdateCategoryOrder)
 
 	app.GET("/api/core/writers", c.Editor.GetAllWriters)
 	app.POST("/api/core/writer", c.Editor.CreateWriter)
