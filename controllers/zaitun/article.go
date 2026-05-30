@@ -99,6 +99,8 @@ func (c *ZaitunController) GetArticleBySlug(ctx *gin.Context) {
 		Writer       string     `json:"writerName"`
 		PublisedDate *time.Time `json:"publishedAt"`
 		HeadlineImg  string     `json:"coverImg"`
+		ThumbImg     string     `json:"thumbImg"`
+		ThumbText    string     `json:"thumbText"`
 		Label        string     `json:"label"`
 		ContentJSON  string     `json:"contents"`
 		AdsJSON      string     `json:"ads"`
@@ -110,7 +112,7 @@ func (c *ZaitunController) GetArticleBySlug(ctx *gin.Context) {
 	err = c.db.QueryRow(
 		`
 		SELECT a.id, a.title, slug, w.writer_name, published_date, a.cover_img, c.label,
-		content_json, ads_json
+		content_json, ads_json, a.thumb_img, a.thumb_text
 		FROM articles a
 		JOIN writers w ON w.id = a.writer_id
 		JOIN categories c ON c.id = a.category_id
@@ -126,6 +128,8 @@ func (c *ZaitunController) GetArticleBySlug(ctx *gin.Context) {
 		&article.Label,
 		&article.ContentJSON,
 		&article.AdsJSON,
+		&article.ThumbImg,
+		&article.ThumbText,
 	)
 
 	article.PublisedDate = lib.Base64ToTime(publishedDate)
