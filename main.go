@@ -127,7 +127,7 @@ func main() {
 
 	app.GET("/api/core/beritas", c.Editor.GetAllBerita)
 	app.PUT("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
-	app.POST("api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
+	app.PUT("api/core/berita/:id", c.Editor.UpdateBeritaPublishing)
 	app.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
 
 	app.POST("/api/core/auth/login", c.Auth.Login)
@@ -147,7 +147,7 @@ func main() {
 		protected.PUT("/api/core/articles/:articleId/cover/rename", c.Image.RenameArticleHeadline)
 		protected.PUT("/api/core/articles/:articleId/cover/thumbnail", c.Image.UpdateArticleThumbnail)
 
-		protected.POST("/api/core/berita/:id/publishing", c.Editor.UpdateBeritaPublishing)
+		protected.PUT("/api/core/berita/:id", c.Editor.UpdateBeritaPublishing)
 		protected.DELETE("/api/core/berita/:id", c.Editor.DeleteBeritaPermanent)
 		protected.PUT("/api/core/berita/:id/cover/thumbnail", c.Editor.UpdateBeritaThumbnail)
 	}
